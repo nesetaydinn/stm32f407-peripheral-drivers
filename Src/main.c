@@ -25,6 +25,10 @@
 
 
 #define RCC_BASE_ADDRESS    0x40023800UL
+
+#define RCC_CR_OFFSET  0x00
+#define RCC_CR_ADDRESS (RCC_BASE_ADDRESS + RCC_CR_OFFSET)
+
 #define RCC_AHB1ENR_OFFSET  0x30
 #define RCC_AHB1ENR_ADDRESS (RCC_BASE_ADDRESS + RCC_AHB1ENR_OFFSET)
 
@@ -33,16 +37,34 @@
 
 int main(void)
 {
+	{ 	// Enabling the HSE
+		// 1st step: Enable HSE clock
+		uint32_t *rcc_cr_address = ((uint32_t*)RCC_CR_ADDRESS);
+		*rcc_cr_address = 0x0;
+		*rcc_cr_address |= (1 << 16);
+		// 2nd step: Wait until HSE clock enable
+		while (!(*rcc_cr_address & (1 << 17)));
+		// 3rd step: Switch system clock to HSE
+		uint32_t *rcc_cfgr = ((uint32_t*)RCC_CFGR_ADDRESS);
+		*rcc_cfgr &= ~(0x3 << 0);
+		*rcc_cfgr |= (0b01 << 0);
+		while (!(*rcc_cfgr & (0b01 << 0)));
+		*rcc_cfgr &= ~(0x3 << 21);
+		*rcc_cfgr |= (0b10 << 21);
+		*rcc_cfgr &= ~(0x3 << 24);
+		*rcc_cfgr |= (0b100 << 24);
+
+	}
+
 	// Enable the GPIOA & GPIOD
 	uint32_t *rcc_ahb1enr = ((uint32_t*)RCC_AHB1ENR_ADDRESS);
 	*rcc_ahb1enr |= (1 << 3) | (1 << 0);
 
-	// Configure the HSI as clock source
-	uint32_t *rcc_cfgr = ((uint32_t*)RCC_CFGR_ADDRESS);
-	*rcc_cfgr &= ~(0x3 << 21);
-	*rcc_cfgr &= ~(0x3 << 24);
-	*rcc_cfgr |= (0b100 << 24);
-
+//	// Configure the HSI as clock source
+//	uint32_t *rcc_cfgr = ((uint32_t*)RCC_CFGR_ADDRESS);
+//	*rcc_cfgr &= ~(0x3 << 21);
+//	*rcc_cfgr &= ~(0x3 << 24);
+//	*rcc_cfgr |= (0b100 << 24);
 
 	// Configure the mode of GPIO A pin 8 as alternate function
 	volatile uint32_t *gpio_moder = (volatile uint32_t*)0x40020000;
