@@ -18,10 +18,16 @@
 
 #include <stm32f407xx.h>
 #include "gpio_drv.h"
+#include "gpio_exti_drv.h"
 
 GPIO_Handle_t green_led_pin;
-GPIO_Handle_t user_btn_pin;
-bool state;
+GPIO_EXTI_Handle_t user_btn_pin, falling_edge_trig_test;
+
+void toggleLed(void)
+{
+	gpio_drv_Toggle(&green_led_pin);
+}
+
 int main(void)
 {
 	/* Green Led Output Pin */
@@ -29,15 +35,24 @@ int main(void)
 	gpio_drv_Init(&green_led_pin, GPIOD, 12, _GPIO_PIN_MODE_OUTPUT, _GPIO_PIN_OUTPUT_PUSH_PULL,
 		_GPIO_PIN_OUTPUT_LOW_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, 0);
 
-	/* User Button Init Pin */
+	/* User Button Init Pin As EXTI */
 	gpio_drv_PeripheralClockControl(GPIOA, true);
-	gpio_drv_Init(&user_btn_pin, GPIOA, 0, _GPIO_PIN_MODE_INPUT, 0, 0, _GPIO_PIN_PULL_DOWN, 0);
+	gpio_drv_PeripheralClockControl(GPIOC, true);
+
+	gpio_exti_drv_Init(&user_btn_pin, GPIOA, 0, _GPIO_PIN_PULL_DOWN, _GPIO_EXTI_PIN_TRIG_RISING_EDGE, 0, toggleLed);
+	gpio_exti_drv_Init(&falling_edge_trig_test, GPIOC, 6, _GPIO_PIN_PULL_UP, _GPIO_EXTI_PIN_TRIG_FALLING_EDGE, 0, NULL);
 
 	for(;;)
 	{
-		gpio_drv_Toggle(&green_led_pin);
-		state = gpio_drv_Read(&user_btn_pin);
-		for (uint32_t c = 0; c < 500000; c++);
 	}
 }
 
+void EXTI0_IRQHandler(void)
+{
+	gpio_exti_drv_IRQHandler(&user_btn_pin);
+}
+
+void EXTI9_5_IRQHandler(void)
+{
+	gpio_exti_drv_IRQHandler(&falling_edge_trig_test);
+}

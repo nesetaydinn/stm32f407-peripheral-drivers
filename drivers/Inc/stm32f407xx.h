@@ -244,6 +244,54 @@ typedef struct __attribute__((packed, aligned(1)))
 #define GPIOJ ((GPIO_Reg_t*)GPIOJ_BASE_ADDR)
 #define GPIOK ((GPIO_Reg_t*)GPIOK_BASE_ADDR)
 
+/**
+ * @brief External interrupt perirpheral registers
+ * @param IMR Interrupt mask register
+ * @param IMR Event mask register
+ * @param RTSR Rising trigger selection register
+ * @param FTSR Falling trigger selection register
+ * @param SWIER Software interrupt event register
+ * @param PR Pending register
+ */
+typedef struct __attribute__((packed, aligned(1)))
+{
+	_VO uint32_t IMR;
+	_VO uint32_t EMR;
+	_VO uint32_t RTSR;
+	_VO uint32_t FTSR;
+	_VO uint32_t SWIER;
+	_VO uint32_t PR;
+} EXTI_Reg_t;
+
+/*
+ * External interrupt registers handle definitions
+ * */
+#define EXTI ((EXTI_Reg_t*)EXTI_BASE_ADDR)
+
+/**
+ * @brief System configuration controller registers
+ * @param MEMRMP SYSCFG memory remap register
+ * @param PMC SYSCFG peripheral mode configuration register
+ * @param EXTICR1 SYSCFG external interrupt configuration register 1
+ * @param EXTICR2 SYSCFG external interrupt configuration register 2
+ * @param EXTICR3 SYSCFG external interrupt configuration register 3
+ * @param EXTICR4 SYSCFG external interrupt configuration register 4
+ * @param CMPCR Compensation cell control register
+ */
+typedef struct __attribute__((packed, aligned(1)))
+{
+	_VO uint32_t MEMRMP;
+	_VO uint32_t PMC;
+	_VO uint32_t EXTICR[4];
+	uint32_t :32;
+	uint32_t :32;
+	_VO uint32_t CMPCR;
+} SYSCFG_Reg_t;
+
+/*
+ * System configuration controller registers handle definitions
+ * */
+#define SYSCFG ((SYSCFG_Reg_t*)SYSCFG_BASE_ADDR)
 
 /*** Clock enabling & disabling macros ***/
 
