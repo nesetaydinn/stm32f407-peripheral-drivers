@@ -49,7 +49,7 @@ bool gpio_drv_Init(GPIO_Handle_t *self, GPIO_Reg_t *gpiox, GPIO_Pin_number_t pin
 
 GPIO_Pin_state_t gpio_drv_Read(GPIO_Handle_t *self)
 {
-	return ((self->gpiox->IDR & (1 << self->pin_config.number)) == _GPIO_PIN_STATE_HIGH);
+	return ((self->gpiox->IDR & (1 << self->pin_config.number)) >> self->pin_config.number);
 }
 
 GPIO_Pin_write_res_t gpio_drv_Write(GPIO_Handle_t *self, GPIO_Pin_state_t state)

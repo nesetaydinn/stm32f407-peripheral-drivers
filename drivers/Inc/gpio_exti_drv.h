@@ -43,6 +43,7 @@ typedef struct
 	uint8_t number;			// Pin position as `GPIO_Pin_number_t`
     uint8_t trigging_type;  // Pin trigging type as `GPIO_EXTI_Pin_trigging_t`
     uint8_t irq_num;        // Pin IRQ type as `GPIO_EXTI_IRQ_nubmers_t`
+    uint8_t irq_priority;   // Pin IRQ priority
 } GPIO_EXTI_Pin_config_t;
 
 typedef struct
@@ -69,6 +70,18 @@ bool gpio_exti_drv_Init(GPIO_EXTI_Handle_t *self, GPIO_Reg_t *gpiox, GPIO_Pin_nu
     GPIO_Pin_pull_type_t pull_type, GPIO_EXTI_Pin_trigging_t trigging, uint8_t irq_priority,
 	void (*irq_event)(void));
 
+/**
+ * @brief GPIO External Interrupt handler
+ * @param self GPIO pin handle base address
+ * @return void
+ * */
 void gpio_exti_drv_IRQHandler(GPIO_EXTI_Handle_t *self);
+
+/**
+ * @brief GPIO Pin configuration and de-initialization
+ * @param self GPIO pin handle base address
+ * @return bool When the operation is successfully return true, else false
+ * */
+bool gpio_exti_drv_DeInit(GPIO_EXTI_Handle_t *self);
 
 #endif /* INC_GPIO_EXTI_DRV_H_ */
