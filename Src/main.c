@@ -19,10 +19,13 @@
 #include <stm32f407xx.h>
 #include "gpio_drv.h"
 #include "gpio_exti_drv.h"
+#include "spi_drv.h"
 
 GPIO_Handle_t green_led_pin;
 GPIO_EXTI_Handle_t user_btn_pin, falling_edge_trig_test;
 
+GPIO_Handle_t spi2_miso, spi2_mosi, spi2_sclk, spi2_nss;
+SPI_Handle_t spi2_handle;
 void toggleLed(void)
 {
 	gpio_drv_Toggle(&green_led_pin);
@@ -39,11 +42,50 @@ int main(void)
 	gpio_drv_PeripheralClockControl(GPIOA, true);
 	gpio_drv_PeripheralClockControl(GPIOC, true);
 
-	gpio_exti_drv_Init(&user_btn_pin, GPIOA, 0, _GPIO_PIN_PULL_DOWN, _GPIO_EXTI_PIN_TRIG_RISING_EDGE, 0, toggleLed);
-	gpio_exti_drv_Init(&falling_edge_trig_test, GPIOC, 6, _GPIO_PIN_PULL_UP, _GPIO_EXTI_PIN_TRIG_FALLING_EDGE, 0, NULL);
+	gpio_exti_drv_Init(&user_btn_pin, GPIOA, 0, _GPIO_PIN_PULL_DOWN, _GPIO_EXTI_PIN_TRIG_RISING_EDGE, 2, toggleLed);
+	gpio_exti_drv_Init(&falling_edge_trig_test, GPIOC, 6, _GPIO_PIN_PULL_UP, _GPIO_EXTI_PIN_TRIG_FALLING_EDGE, 1, NULL);
+
+	/* SPI Pins Init */
+	/* Alt func mode 5
+	 * PB13 --> SPI2_SCLK
+	 * PB15 --> SPI2_MOSI
+	 * PB14 --> SPI2_MISO
+	 * PB12 --> SPI2_NSS
+	 * */
+	gpio_drv_PeripheralClockControl(GPIOB, true);
+
+	gpio_drv_Init(&spi2_sclk, GPIOB, 13, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+	gpio_drv_Init(&spi2_mosi, GPIOB, 15, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+//	gpio_drv_Init(&spi2_miso, GPIOB, 14, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+//
+//	gpio_drv_Init(&spi2_nss, GPIOB, 12, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+	SPI_config_t spi2_config;
+
+	spi2_config.mode = _SPI_DEVICE_MODE_MASTER;
+	spi2_config.bus_config = _SPI_BUS_CONFIG_FULL_DULEX;
+	spi2_config.speed = _SPI_BUS_SPEED_DIV_2;
+	spi2_config.dff = _SPI_DFF_8BITS;
+	spi2_config.cpha = _SPI_CPHA_LOW;
+	spi2_config.cpol = _SPI_CPOL_LOW;
+	spi2_config.ssm = _SPI_SSM_SW;
+	spi2_config.first_bit = _SPI_FF_LSB_FIRST;
+
+	spi_drv_Init(&spi2_handle, SPI2, spi2_config);
+
+	char spi_hello[] = "Hello, world";
+
+	spi_drv_SendData(&spi2_handle, (uint8_t*)spi_hello, strlen(spi_hello));
 
 	for(;;)
 	{
+
 	}
 }
 

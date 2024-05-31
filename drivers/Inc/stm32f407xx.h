@@ -293,6 +293,48 @@ typedef struct __attribute__((packed, aligned(1)))
  * */
 #define SYSCFG ((SYSCFG_Reg_t*)SYSCFG_BASE_ADDR)
 
+/**
+ * @brief Serial Peripheral Interface & Inter-IC Sound registers
+ * @param CR1 SPI control register 1 (not used in I2S mode)
+ * @param CR2 SPI control register 2 (SPI_CR2)
+ * @param SR SPI status register (SPI_SR)
+ * @param DR SPI data register (SPI_DR)
+ * @param CRCPR SPI CRC polynomial register (SPI_CRCPR) (not used in I2S mode)
+ * @param RXCRCR SPI RX CRC register (SPI_RXCRCR) (not used in I2S mode)
+ * @param TXCRCR SPI TX CRC register (SPI_TXCRCR) (not used in I2S mode)
+ * @param I2SCFGR SPI_I2S configuration register (SPI_I2SCFGR)
+ * @param I2SPR SPI_I2S prescaler register (SPI_I2SPR)
+ */
+typedef struct __attribute__((packed, aligned(1)))
+{
+	_VO uint32_t CR1;
+	_VO uint32_t CR2;
+	_VO uint32_t SR;
+	_VO uint32_t DR;
+	_VO uint32_t CRCPR;
+	_VO uint32_t RXCRCR;
+	_VO uint32_t TXCRCR;
+	_VO uint32_t I2SCFGR;
+	_VO uint32_t I2SPR;
+} SPI_I2S_Reg_t;
+
+typedef SPI_I2S_Reg_t SPI_Reg_t;
+typedef SPI_I2S_Reg_t I2S_Reg_t;
+
+/*
+ * Serial Peripheral Interface registers handle definitions
+ * */
+#define SPI1 ((SPI_Reg_t*)SPI1_BASE_ADDR)
+#define SPI2 ((SPI_Reg_t*)SPI2_BASE_ADDR)
+#define SPI3 ((SPI_Reg_t*)SPI3_BASE_ADDR)
+
+/*
+ * Inter-IC Sound registers handle definitions
+ * */
+#define I2S1 ((SPI_Reg_t*)I2S1_BASE_ADDR)
+#define I2S2 ((SPI_Reg_t*)I2S2_BASE_ADDR)
+#define I2S3 ((SPI_Reg_t*)I2S3_BASE_ADDR)
+
 /*** Clock enabling & disabling macros ***/
 
 /*

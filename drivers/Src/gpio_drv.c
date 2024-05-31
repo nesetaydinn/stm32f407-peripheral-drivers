@@ -41,7 +41,7 @@ bool gpio_drv_Init(GPIO_Handle_t *self, GPIO_Reg_t *gpiox, GPIO_Pin_number_t pin
 	if (_GPIO_PIN_MODE_ALT_FUNC == self->pin_config.mode)
 	{
 		self->gpiox->AFR[(self->pin_config.number > 7) ? 1 : 0] |=
-			(self->pin_config.alt_func_mode << (4 * self->pin_config.number));
+			(self->pin_config.alt_func_mode << (4 * (self->pin_config.number % 8)));
 	}
 	self->gpiox->LCKR |= self->pin_config.number;
 	return true;
