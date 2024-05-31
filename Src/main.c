@@ -26,9 +26,16 @@ GPIO_EXTI_Handle_t user_btn_pin, falling_edge_trig_test;
 
 GPIO_Handle_t spi2_miso, spi2_mosi, spi2_sclk, spi2_nss;
 SPI_Handle_t spi2_handle;
+
+uint8_t data_size_receive;
+uint8_t data_size_rec_buff[128];
+
+bool send_enable;
+
 void toggleLed(void)
 {
 	gpio_drv_Toggle(&green_led_pin);
+	send_enable = true;
 }
 
 int main(void)
@@ -60,11 +67,11 @@ int main(void)
 	gpio_drv_Init(&spi2_mosi, GPIOB, 15, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
 		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
 
-//	gpio_drv_Init(&spi2_miso, GPIOB, 14, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
-//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
-//
-//	gpio_drv_Init(&spi2_nss, GPIOB, 12, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
-//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+	gpio_drv_Init(&spi2_miso, GPIOB, 14, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+	gpio_drv_Init(&spi2_nss, GPIOB, 12, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
 
 	SPI_config_t spi2_config;
 
@@ -74,17 +81,28 @@ int main(void)
 	spi2_config.dff = _SPI_DFF_8BITS;
 	spi2_config.cpha = _SPI_CPHA_LOW;
 	spi2_config.cpol = _SPI_CPOL_LOW;
-	spi2_config.ssm = _SPI_SSM_SW;
+	spi2_config.ssm = _SPI_SSM_HW;
 	spi2_config.first_bit = _SPI_FF_LSB_FIRST;
 
 	spi_drv_Init(&spi2_handle, SPI2, spi2_config);
 
 	char spi_hello[] = "Hello, world";
+	uint8_t data_size = strlen(spi_hello);
 
-	spi_drv_SendData(&spi2_handle, (uint8_t*)spi_hello, strlen(spi_hello));
+
 
 	for(;;)
 	{
+		while (!send_enable);
+		send_enable = false;
+
+		spi_drv_SendData(&spi2_handle, (uint8_t*)&data_size, sizeof(data_size));
+
+		spi_drv_SendData(&spi2_handle, (uint8_t*)spi_hello, strlen(spi_hello));
+
+		spi_drv_ReceiveData(&spi2_handle, (uint8_t*)&data_size_receive, sizeof(data_size_receive));
+
+		spi_drv_ReceiveData(&spi2_handle, (uint8_t*)data_size_rec_buff, data_size_receive);
 
 	}
 }

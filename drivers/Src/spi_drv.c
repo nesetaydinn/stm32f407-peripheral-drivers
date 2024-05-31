@@ -29,6 +29,8 @@ bool spi_drv_Init(SPI_Handle_t *self, SPI_Reg_t *spix, SPI_config_t config)
 
     /* Set config */
     spix->CR1 |= (self->config.mode << SPI_CR1_MSTR);
+    if (self->config.mode && !self->config.ssm)
+        self->spix->CR2 |= (1 << SPI_CR2_SSOE);
 
     if (_SPI_BUS_CONFIG_FULL_DULEX == self->config.bus_config)
     {
@@ -44,7 +46,7 @@ bool spi_drv_Init(SPI_Handle_t *self, SPI_Reg_t *spix, SPI_config_t config)
         spix->CR1 |= (1 << SPI_CR1_RXONLY);
     }
     spix->CR1 |= (self->config.speed << SPI_CR1_BR);
-//    self->spix->CR1 |= (self->config.first_bit << SPI_CR1_LSBFIRST);
+    spix->CR1 |= (self->config.first_bit << SPI_CR1_LSBFIRST);
     spix->CR1 |= (self->config.dff << SPI_CR1_DFF);
     spix->CR1 |= (self->config.cpol << SPI_CR1_CPOL);
     spix->CR1 |= (self->config.cpha << SPI_CR1_CPHA);
@@ -54,7 +56,6 @@ bool spi_drv_Init(SPI_Handle_t *self, SPI_Reg_t *spix, SPI_config_t config)
     {
         self->spix->CR1 |= (1 << SPI_CR1_SSI);
     }
-    spix->CR1 |= (1 << SPI_CR1_SPE);
 
 	return true;
 }
@@ -63,10 +64,12 @@ bool spi_drv_SendData(SPI_Handle_t *self, uint8_t *data, uint32_t data_len)
 {
     if (!data_len)
     	return false;
+
+	spi_drv_PeripheralControl(self, true);
+
     while (data_len)
     {
-    	while (spi_drv_GetFlagStatus(self->spix, SPI_SR_TXE_FLAG) == 0);
-
+    	while (!spi_drv_GetFlagStatus(self->spix, SPI_SR_TXE_FLAG));
         if (_SPI_DFF_8BITS == self->config.dff)
         {
             self->spix->DR = *data;
@@ -80,12 +83,48 @@ bool spi_drv_SendData(SPI_Handle_t *self, uint8_t *data, uint32_t data_len)
             (uint16_t*)data++;
         }
     }
+    while (spi_drv_GetFlagStatus(self->spix, SPI_SR_BSY_FLAG));
+
+	spi_drv_PeripheralControl(self, false);
+
     return true;
 }
 
 bool spi_drv_ReceiveData(SPI_Handle_t *self, uint8_t *data, uint32_t data_len)
 {
-	return true;
+    if (!data_len)
+    	return false;
+
+	spi_drv_PeripheralControl(self, true);
+    while (data_len)
+    {
+    	while (!spi_drv_GetFlagStatus(self->spix, SPI_SR_RXNE_FLAG));
+        if (_SPI_DFF_8BITS == self->config.dff)
+        {
+            *data = self->spix->DR;
+            data_len--;
+            data++;
+        }
+        else
+        {
+        	*((uint16_t*)data) = self->spix->DR;
+            data_len-= 2;
+            (uint16_t*)data++;
+        }
+    }
+    while (spi_drv_GetFlagStatus(self->spix, SPI_SR_BSY_FLAG));
+
+	spi_drv_PeripheralControl(self, false);
+
+    return true;
+}
+
+void spi_drv_PeripheralControl(SPI_Handle_t *self, bool state)
+{
+	if (state)
+		self->spix->CR1 |= (1 << SPI_CR1_SPE);
+	else
+		self->spix->CR1 &= ~(1 << SPI_CR1_SPE);
 }
 
 bool spi_drv_PeripheralClockControl(SPI_Reg_t *self, bool state)

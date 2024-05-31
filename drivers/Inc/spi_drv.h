@@ -149,6 +149,8 @@ bool spi_drv_SendData(SPI_Handle_t *self, uint8_t *data, uint32_t data_len);
 
 bool spi_drv_ReceiveData(SPI_Handle_t *self, uint8_t *data, uint32_t data_len);
 
+void spi_drv_PeripheralControl(SPI_Handle_t *self, bool state);
+
 bool spi_drv_DeInit(SPI_Handle_t *self);
 
 #endif /* INC_SPI_DRV_H_ */
