@@ -117,8 +117,8 @@ typedef enum
 
 typedef enum
 {
-    _SPI_FF_LSB_FIRST = 0x0,
-    _SPI_FF_MSB_FIRST
+    _SPI_FF_MSB_FIRST = 0x0,
+    _SPI_FF_LSB_FIRST
 } SPI_FF_t;
 
 /* STRUCTs */
