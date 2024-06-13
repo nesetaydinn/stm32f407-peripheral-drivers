@@ -27,15 +27,17 @@ GPIO_EXTI_Handle_t user_btn_pin, falling_edge_trig_test;
 GPIO_Handle_t spi2_miso, spi2_mosi, spi2_sclk, spi2_nss;
 SPI_Handle_t spi2_handle;
 
-uint8_t data_size_receive;
-uint8_t data_size_rec_buff[128];
-
-bool send_enable;
+uint8_t spi_irq_event;
+uint8_t spi_receiving_data[32];
 
 void toggleLed(void)
 {
 	gpio_drv_Toggle(&green_led_pin);
-	send_enable = true;
+}
+
+void spiIRQEvent(void *self, uint8_t event)
+{
+	spi_irq_event = event;
 }
 
 int main(void)
@@ -60,37 +62,49 @@ int main(void)
 	 * PB14 --> SPI2_MISO
 	 * PB12 --> SPI2_NSS
 	 * */
-//	gpio_drv_PeripheralClockControl(GPIOB, true);
-//
-//	gpio_drv_Init(&spi2_sclk, GPIOB, 13, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
-//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
-//
-//	gpio_drv_Init(&spi2_mosi, GPIOB, 15, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
-//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
-//
-//	gpio_drv_Init(&spi2_miso, GPIOB, 14, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
-//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
-//
-//	gpio_drv_Init(&spi2_nss, GPIOB, 12, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
-//		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
-//
-//	SPI_config_t spi2_config;
-//
-//	spi2_config.mode = _SPI_DEVICE_MODE_MASTER;
-//	spi2_config.bus_config = _SPI_BUS_CONFIG_FULL_DULEX;
-//	spi2_config.speed = _SPI_BUS_SPEED_DIV_32;
-//	spi2_config.dff = _SPI_DFF_8BITS;
-//	spi2_config.cpha = _SPI_CPHA_LOW;
-//	spi2_config.cpol = _SPI_CPOL_LOW;
-//	spi2_config.ssm = _SPI_SSM_HW;
-//	spi2_config.first_bit = _SPI_FF_MSB_FIRST;
-//
-//	spi_drv_Init(&spi2_handle, SPI2, spi2_config);
-//
+	gpio_drv_PeripheralClockControl(GPIOB, true);
+
+	gpio_drv_Init(&spi2_sclk, GPIOB, 13, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+	gpio_drv_Init(&spi2_mosi, GPIOB, 15, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+	gpio_drv_Init(&spi2_miso, GPIOB, 14, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+	gpio_drv_Init(&spi2_nss, GPIOB, 12, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_5);
+
+	SPI_config_t spi2_config;
+
+	spi2_config.mode = _SPI_DEVICE_MODE_MASTER;
+	spi2_config.bus_config = _SPI_BUS_CONFIG_FULL_DULEX;
+	spi2_config.speed = _SPI_BUS_SPEED_DIV_32;
+	spi2_config.dff = _SPI_DFF_8BITS;
+	spi2_config.cpha = _SPI_CPHA_LOW;
+	spi2_config.cpol = _SPI_CPOL_LOW;
+	spi2_config.ssm = _SPI_SSM_HW;
+	spi2_config.first_bit = _SPI_FF_MSB_FIRST;
+
+	spi_drv_Init(&spi2_handle, SPI2, spi2_config);
+
+	spi_drv_SetInterrupts(&spi2_handle, 3, spiIRQEvent);
+
 //	char spi_hello[] = "Hello, world";
 //	uint8_t data_size = strlen(spi_hello);
 
+	uint8_t sending_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
+	uint16_t data_len = sizeof(sending_data );
 
+	spi_drv_PeripheralControl(&spi2_handle, true);
+
+	spi_drv_ReceiveDataIT(&spi2_handle, spi_receiving_data, data_len);
+
+	spi_drv_SendDataIT(&spi2_handle, sending_data, data_len);
+
+
+	spi_drv_PeripheralControl(&spi2_handle, false);
 
 	for(;;)
 	{
@@ -107,4 +121,19 @@ void EXTI0_IRQHandler(void)
 void EXTI9_5_IRQHandler(void)
 {
 	gpio_exti_drv_IRQHandler(&falling_edge_trig_test);
+}
+
+void SPI1_IRQHandler(void)
+{
+	spi_drv_IRQHandler(&spi2_handle);
+}
+
+void SPI2_IRQHandler(void)
+{
+	spi_drv_IRQHandler(&spi2_handle);
+}
+
+void SPI3_IRQHandler(void)
+{
+	spi_drv_IRQHandler(&spi2_handle);
 }
