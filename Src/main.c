@@ -30,6 +30,7 @@ SPI_Handle_t spi2_handle;
 uint8_t spi_irq_event;
 uint8_t spi_receiving_data[32];
 
+
 void toggleLed(void)
 {
 	gpio_drv_Toggle(&green_led_pin);
@@ -91,17 +92,13 @@ int main(void)
 
 	spi_drv_SetInterrupts(&spi2_handle, 3, spiIRQEvent);
 
-//	char spi_hello[] = "Hello, world";
-//	uint8_t data_size = strlen(spi_hello);
-
-	uint8_t sending_data[] = {0x01, 0x02, 0x03, 0x04, 0x05};
-	uint16_t data_len = sizeof(sending_data );
+	char spi_hello[] = "Hello, world";
 
 	spi_drv_PeripheralControl(&spi2_handle, true);
 
-	spi_drv_ReceiveDataIT(&spi2_handle, spi_receiving_data, data_len);
+	spi_drv_ReceiveDataIT(&spi2_handle, spi_receiving_data, sizeof(spi_receiving_data));
 
-	spi_drv_SendDataIT(&spi2_handle, sending_data, data_len);
+	spi_drv_SendDataIT(&spi2_handle, (uint8_t*)spi_hello, strlen(spi_hello));
 
 
 	spi_drv_PeripheralControl(&spi2_handle, false);

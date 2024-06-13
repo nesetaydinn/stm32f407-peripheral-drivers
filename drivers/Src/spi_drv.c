@@ -13,7 +13,7 @@
  * @param state Peripheral clock enabling control, true: enable
  * @return bool When the operation is successfully; return true 
  */
-bool spi_drv_PeripheralClockControl(SPI_Reg_t *self, bool state);
+bool spi_drv_PeripheralClockControl(SPI_Reg_t *spix, bool state);
 
 /**
  * @brief SPI Transmit interrupt
@@ -63,7 +63,7 @@ static void spi_drv_FREInterruptHandler(SPI_Handle_t *self);
  * @param flag Interested flag
  * @return When the interested flag is set return true
  */
-bool spi_drv_GetFlagStatus(SPI_Reg_t *self, uint32_t flag);
+bool spi_drv_GetFlagStatus(SPI_Reg_t *spix, uint32_t flag);
 
 bool spi_drv_Init(SPI_Handle_t *self, SPI_Reg_t *spix, SPI_config_t config)
 {
@@ -245,28 +245,28 @@ void spi_drv_PeripheralControl(SPI_Handle_t *self, bool state)
 		self->spix->CR1 &= ~(1 << SPI_CR1_SPE);
 }
 
-bool spi_drv_PeripheralClockControl(SPI_Reg_t *self, bool state)
+bool spi_drv_PeripheralClockControl(SPI_Reg_t *spix, bool state)
 {
-	if (!(((volatile SPI_Reg_t*)SPI1_BASE_ADDR == (volatile SPI_Reg_t*)self) ||
-		  ((volatile SPI_Reg_t*)SPI2_BASE_ADDR == (volatile SPI_Reg_t*)self) ||
-		  ((volatile SPI_Reg_t*)SPI3_BASE_ADDR == (volatile SPI_Reg_t*)self)))
+	if (!(((volatile SPI_Reg_t*)SPI1_BASE_ADDR == (volatile SPI_Reg_t*)spix) ||
+		  ((volatile SPI_Reg_t*)SPI2_BASE_ADDR == (volatile SPI_Reg_t*)spix) ||
+		  ((volatile SPI_Reg_t*)SPI3_BASE_ADDR == (volatile SPI_Reg_t*)spix)))
 		return false;
 	if (state)
 	{
-		if ((volatile SPI_Reg_t*)SPI1_BASE_ADDR == (volatile SPI_Reg_t*)self)
+		if ((volatile SPI_Reg_t*)SPI1_BASE_ADDR == (volatile SPI_Reg_t*)spix)
 			__SPI1_PCLK_EN();
-		else if ((volatile SPI_Reg_t*)SPI2_BASE_ADDR == (volatile SPI_Reg_t*)self)
+		else if ((volatile SPI_Reg_t*)SPI2_BASE_ADDR == (volatile SPI_Reg_t*)spix)
 			__SPI2_PCLK_EN();
-		else if ((volatile SPI_Reg_t*)SPI3_BASE_ADDR == (volatile SPI_Reg_t*)self)
+		else if ((volatile SPI_Reg_t*)SPI3_BASE_ADDR == (volatile SPI_Reg_t*)spix)
 			__SPI3_PCLK_EN();
 	}
 	else
 	{
-		if ((volatile SPI_Reg_t*)SPI1_BASE_ADDR == (volatile SPI_Reg_t*)self)
+		if ((volatile SPI_Reg_t*)SPI1_BASE_ADDR == (volatile SPI_Reg_t*)spix)
 			__SPI1_PCLK_DIS();
-		else if ((volatile SPI_Reg_t*)SPI2_BASE_ADDR == (volatile SPI_Reg_t*)self)
+		else if ((volatile SPI_Reg_t*)SPI2_BASE_ADDR == (volatile SPI_Reg_t*)spix)
 			__SPI2_PCLK_DIS();
-		else if ((volatile SPI_Reg_t*)SPI3_BASE_ADDR == (volatile SPI_Reg_t*)self)
+		else if ((volatile SPI_Reg_t*)SPI3_BASE_ADDR == (volatile SPI_Reg_t*)spix)
 			__SPI3_PCLK_DIS();
 	}
 	return true;
@@ -428,9 +428,9 @@ void spi_drv_IRQHandler(SPI_Handle_t *self)
 	}
 }
 
-bool spi_drv_GetFlagStatus(SPI_Reg_t *self, uint32_t flag)
+bool spi_drv_GetFlagStatus(SPI_Reg_t *spix, uint32_t flag)
 {
-	return ((self->SR & flag) == flag);
+	return ((spix->SR & flag) == flag);
 }
 
 bool spi_drv_DeInit(SPI_Handle_t *self)
