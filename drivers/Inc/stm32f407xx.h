@@ -335,6 +335,31 @@ typedef SPI_I2S_Reg_t I2S_Reg_t;
 #define I2S2 ((SPI_Reg_t*)I2S2_BASE_ADDR)
 #define I2S3 ((SPI_Reg_t*)I2S3_BASE_ADDR)
 
+/**
+ * @brief Inter-integrated circuit interface registers
+ * @param
+ */
+typedef struct __attribute__((packed, aligned(1)))
+{
+	_VO uint32_t CR1;
+	_VO uint32_t CR2;
+	_VO uint32_t OAR1;
+	_VO uint32_t OAR2;
+	_VO uint32_t DR;
+	_VO uint32_t SR1;
+	_VO uint32_t SR2;
+	_VO uint32_t CCR;
+	_VO uint32_t TRISE;
+	_VO uint32_t FLTR; 
+} I2C_Reg_t;
+
+/*
+ * Inter-integrated circuit interface registers handle definitions
+ * */
+#define I2C1 ((I2C_Reg_t*)I2C1_BASE_ADDR)
+#define I2C2 ((I2C_Reg_t*)I2C2_BASE_ADDR)
+#define I2C3 ((I2C_Reg_t*)I2C3_BASE_ADDR)
+
 /*** Clock enabling & disabling macros ***/
 
 /*
@@ -571,5 +596,103 @@ typedef SPI_I2S_Reg_t I2S_Reg_t;
 
 #define __SYSCFG_PCLK_DIS() (RCC->APB2ENR &= ~(1 << 14))
 
+/*
+ * System clock speeds calculation 
+ */
+#ifndef CRYSTAL_SPEED
+#define CRYSTAL_SPEED 8000000UL
+#endif
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+ static inline uint32_t rcc_GetGeneralClockOutputSpeed(void)
+ {
+ 	uint8_t sws = (RCC->CFGR >> 2) & 0b11 ; // System clock switch status
+ 	uint32_t speed;
+ 	switch (sws)
+ 	{
+ 		case 0:
+ 			speed = 16000000;
+ 			break;
+ 		case 1:
+ 			speed = CRYSTAL_SPEED;
+ 			break;
+ 		case 2:
+ 			uint16_t pllm = (RCC->PLLCFGR & 0b111111);
+ 			uint16_t plln = (RCC->PLLCFGR >> 6) & 0b111111111;
+ 			uint16_t pllp = (RCC->PLLCFGR >> 16) & 0b11;
+ 			uint8_t pllsrc = (RCC->PLLCFGR >> 22) & 0b1;
+
+ 			if (pllsrc)
+ 				speed = CRYSTAL_SPEED;
+ 			else
+ 				speed = 16000000;
+ 			if ((0 == plln) || (1 == plln)) // Wrong configuration
+ 				while (1);
+ 			if ((0 == pllm) || (1 == pllm)) // Wrong configuration
+ 				while (1);
+
+ 			if (!pllp)
+ 				pllp = 2;
+ 			else if (1 == pllp)
+ 				pllp = 4;
+ 			else if (2 == pllp)
+ 				pllp = 6;
+ 			else if (3 == pllp)
+ 				pllp = 8;
+ 			float vco_clk = speed * ((float)plln / pllm);
+ 			speed = vco_clk / pllp;
+ 			break;
+ 		default:
+ 			while (1);
+ 			break;
+ 	}
+ 	return speed;
+ }
+
+static inline uint32_t rcc_GetAPB1ClockSpeed(void)
+{
+	uint32_t speed = rcc_GetGeneralClockOutputSpeed();
+    uint8_t ppre1 = (RCC->CFGR >> 10) & 0b111; // System clock switch status
+	if (!(ppre1 >> 2))
+		ppre1 = 1;
+	else if (0b100 == ppre1)
+		ppre1 = 2;
+	else if (0b101 == ppre1)
+		ppre1 = 4;
+	else if (0b110 == ppre1)
+		ppre1 = 8;
+	else if (0b111 == ppre1)
+		ppre1 = 16;
+	speed /= ppre1;
+	return speed;
+}
+
+static inline uint32_t rcc_GetAPB2ClockSpeed(void)
+{
+	uint32_t speed = rcc_GetGeneralClockOutputSpeed();
+    uint8_t ppre2 = (RCC->CFGR >> 13) & 0b111; // System clock switch status
+	if (!(ppre2 >> 2))
+		ppre2 = 1;
+	else if (0b100 == ppre2)
+		ppre2 = 2;
+	else if (0b101 == ppre2)
+		ppre2 = 4;
+	else if (0b110 == ppre2)
+		ppre2 = 8;
+	else if (0b111 == ppre2)
+		ppre2 = 16;
+	speed /= ppre2;
+	return speed;
+}
+
+#define __RCC_GET_APB1_SPEED() (rcc_GetAPB1ClockSpeed())
+#define __RCC_GET_APB2_SPEED() (rcc_GetAPB2ClockSpeed())
+
+#ifdef __cplusplus
+}
+#endif
 #endif /* INC_STM32F407XX_H_ */

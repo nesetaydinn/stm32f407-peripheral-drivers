@@ -20,43 +20,71 @@
 #include "gpio_drv.h"
 #include "gpio_exti_drv.h"
 #include "spi_drv.h"
+#include "i2c_drv.h"
 
+/* MACROs */
+#define GPIO_EN 1
+#define EXTI_EN 1
+#define SPI_EN  0
+#define I2C_EN  1
+
+
+/* VARIABLEs */
+
+#if GPIO_EN
 GPIO_Handle_t green_led_pin;
-GPIO_EXTI_Handle_t user_btn_pin, falling_edge_trig_test;
+#endif
 
+#if EXTI_EN
+GPIO_EXTI_Handle_t user_btn_pin, falling_edge_trig_test;
+#endif
+
+#if SPI_EN
 GPIO_Handle_t spi2_miso, spi2_mosi, spi2_sclk, spi2_nss;
 SPI_Handle_t spi2_handle;
-
 uint8_t spi_irq_event;
 uint8_t spi_receiving_data[32];
+#endif
 
+#if I2C_EN
+GPIO_Handle_t i2c_scl, i2c_data;
+I2C_Handle_t i2c_handle;
+#endif
 
+#if EXTI_EN
 void toggleLed(void)
 {
 	gpio_drv_Toggle(&green_led_pin);
 }
+#endif
 
+#if SPI_EN
 void spiIRQEvent(void *self, uint8_t event)
 {
 	spi_irq_event = event;
 }
+#endif
 
 int main(void)
 {
+	#if GPIO_EN
 	/* Green Led Output Pin */
 	gpio_drv_PeripheralClockControl(GPIOD, true);
 	gpio_drv_Init(&green_led_pin, GPIOD, 12, _GPIO_PIN_MODE_OUTPUT, _GPIO_PIN_OUTPUT_PUSH_PULL,
 		_GPIO_PIN_OUTPUT_LOW_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, 0);
+	#endif
 
+	#if EXTI_EN
 	/* User Button Init Pin As EXTI */
 	gpio_drv_PeripheralClockControl(GPIOA, true);
 	gpio_drv_PeripheralClockControl(GPIOC, true);
 
 	gpio_exti_drv_Init(&user_btn_pin, GPIOA, 0, _GPIO_PIN_PULL_DOWN, _GPIO_EXTI_PIN_TRIG_RISING_EDGE, 2, toggleLed);
 	gpio_exti_drv_Init(&falling_edge_trig_test, GPIOC, 6, _GPIO_PIN_PULL_UP, _GPIO_EXTI_PIN_TRIG_FALLING_EDGE, 1, NULL);
+	#endif
 
+	#if SPI_EN
 	/* SPI Pins Init */
-	/* Note i'll continue SPI when the logic converter came */
 	/* Alt func mode 5
 	 * PB13 --> SPI2_SCLK
 	 * PB15 --> SPI2_MOSI
@@ -100,8 +128,38 @@ int main(void)
 
 	spi_drv_SendDataIT(&spi2_handle, (uint8_t*)spi_hello, strlen(spi_hello));
 
-
 	spi_drv_PeripheralControl(&spi2_handle, false);
+	#endif
+
+	#if I2C_EN
+	/* I2C Pins Init */
+
+	/* Alt func mode 4
+	 * PB9 --> I2C1_SDA
+	 * PB6 --> I2C1_SCL
+	 * */
+
+	gpio_drv_PeripheralClockControl(GPIOB, true);
+
+	gpio_drv_Init(&i2c_scl, GPIOB, 6, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_OPEN_DRAIN,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_4);
+
+	gpio_drv_Init(&i2c_data, GPIOB, 9, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_OPEN_DRAIN,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_NO_PULL_UP_PULL_DOWN, _GPIO_PIN_ALT_FUNC_4);
+
+
+	I2C_config_t i2c1_config;
+	i2c1_config.ack_control = _I2C_ACK_DISABLE;
+	i2c1_config.device_addr = 0x00;
+	i2c1_config.fm_duty_cycle = _I2C_FM_DUTY_CYCLE_2;
+	i2c1_config.scl_speed = _I2C_SCL_SPEED_SM;
+
+	i2c_drv_Init(&i2c_handle, I2C1, i2c1_config);
+
+	char i2c_sending_data[] = "Hello there...";
+	i2c_drv_MasterSendData(&i2c_handle, 0x3C, (uint8_t*)i2c_sending_data, strlen(i2c_sending_data));
+
+	#endif
 
 	for(;;)
 	{
@@ -110,6 +168,7 @@ int main(void)
 	}
 }
 
+#if EXTI_EN
 void EXTI0_IRQHandler(void)
 {
 	gpio_exti_drv_IRQHandler(&user_btn_pin);
@@ -119,7 +178,9 @@ void EXTI9_5_IRQHandler(void)
 {
 	gpio_exti_drv_IRQHandler(&falling_edge_trig_test);
 }
+#endif
 
+#if SPI_EN
 void SPI1_IRQHandler(void)
 {
 	spi_drv_IRQHandler(&spi2_handle);
@@ -134,3 +195,4 @@ void SPI3_IRQHandler(void)
 {
 	spi_drv_IRQHandler(&spi2_handle);
 }
+#endif
