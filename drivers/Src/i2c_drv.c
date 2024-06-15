@@ -25,6 +25,8 @@ void i2c_drv_GenerateStartCondition(I2C_Reg_t *i2cx);
 
 void i2c_drv_SendAddress(I2C_Reg_t *i2cx, uint8_t slave_addr, I2C_Addr_operation_t operation);
 
+void i2c_drv_ControlACK(I2C_Reg_t *i2cx, I2C_Ack_state_t state);
+
 void i2c_drv_ClearAddrFlag(I2C_Reg_t *i2cx);
 
 void i2c_drv_GenerateStopCondition(I2C_Reg_t *i2cx);
@@ -47,6 +49,9 @@ bool i2c_drv_Init(I2C_Handle_t *self, I2C_Reg_t *i2cx, I2C_config_t config)
 	self->i2cx = i2cx;
 
 	/* Set config */
+
+    // Set enable to peripheral
+    self->i2cx->CR1 |= (1 << I2C_CR1_PE);
 
     // Set ack configuration
     self->i2cx->CR1 |= (self->config.ack_control << I2C_CR1_ACK);
@@ -81,9 +86,6 @@ bool i2c_drv_Init(I2C_Handle_t *self, I2C_Reg_t *i2cx, I2C_config_t config)
     // Set Trise configuration
     self->i2cx->TRISE |= (trise & 0x3F);
 
-    // Set enable to peripheral
-    self->i2cx->CR1 |= (1 << I2C_CR1_PE);
-
     return true;
 }
 
@@ -103,7 +105,7 @@ bool i2c_drv_MasterSendData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *dat
     // Start Bit checking
     while (!i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_SB_FLAG));
 
-    // Send slave address 
+    // Send slave address
     i2c_drv_SendAddress(self->i2cx, slave_addr, _I2C_ADDR_OPERATION_WRITE);
 
     // Address sent bit checking
@@ -134,8 +136,48 @@ bool i2c_drv_MasterSendData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *dat
     return true;
 }
 
-bool i2c_drv_MasterReceive(I2C_Handle_t *self)
+bool i2c_drv_MasterReceiveData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len)
 {
+    if ((NULL == self) || (NULL == data))
+        return false;
+
+    // Start condition generating
+    i2c_drv_GenerateStartCondition(self->i2cx);
+
+    // Start Bit checking
+    while (!i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_SB_FLAG));
+
+    // Send slave address 
+    i2c_drv_SendAddress(self->i2cx, slave_addr, _I2C_ADDR_OPERATION_READ);
+
+    // Address sent bit checking
+    while (!i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_ADDR_FLAG));
+
+    while (data_len)
+    {
+        if (1 == data_len)
+        {
+            // Disable ACK
+            i2c_drv_ControlACK(self->i2cx, _I2C_ACK_DISABLE);
+        }
+
+        // Clear the ADDR flag
+        i2c_drv_ClearAddrFlag(self->i2cx);
+
+        // Check RXNE flag
+        while (!i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_RXNE_FLAG));
+
+        *data = self->i2cx->DR;
+        data_len--;
+        data++;
+    }
+
+    // Stop condition generating
+    i2c_drv_GenerateStopCondition(self->i2cx);
+
+    // Set default state to ACK
+    i2c_drv_ControlACK(self->i2cx, self->config.ack_control);
+
     return true;
 }
 
@@ -200,6 +242,16 @@ void i2c_drv_SendAddress(I2C_Reg_t *i2cx, uint8_t slave_addr, I2C_Addr_operation
     slave_addr <<= 1;
     slave_addr |= operation;
     i2cx->DR = slave_addr;
+}
+
+void i2c_drv_ControlACK(I2C_Reg_t *i2cx, I2C_Ack_state_t state)
+{
+    if (state)
+    {
+        i2cx->CR1 |= (1 << I2C_CR1_ACK);
+        return;
+    }
+    i2cx->CR1 &= ~(1 << I2C_CR1_ACK);
 }
 
 void i2c_drv_ClearAddrFlag(I2C_Reg_t *i2cx)

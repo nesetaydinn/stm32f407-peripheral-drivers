@@ -149,15 +149,28 @@ int main(void)
 
 
 	I2C_config_t i2c1_config;
-	i2c1_config.ack_control = _I2C_ACK_DISABLE;
+	i2c1_config.ack_control = _I2C_ACK_ENABLE;
 	i2c1_config.device_addr = 0x00;
 	i2c1_config.fm_duty_cycle = _I2C_FM_DUTY_CYCLE_2;
 	i2c1_config.scl_speed = _I2C_SCL_SPEED_SM;
 
 	i2c_drv_Init(&i2c_handle, I2C1, i2c1_config);
 
-	char i2c_sending_data[] = "Hello there...";
-	i2c_drv_MasterSendData(&i2c_handle, 0x3C, (uint8_t*)i2c_sending_data, strlen(i2c_sending_data));
+	uint8_t i2c_slave_addr = 0x14;
+	uint8_t i2c_sending_data = 0x20;
+	uint8_t i2c_receiving_data[32];
+
+	do
+	{
+		i2c_drv_MasterSendData(&i2c_handle, i2c_slave_addr, (uint8_t*)&i2c_sending_data, 1);
+		i2c_drv_MasterReceiveData(&i2c_handle, i2c_slave_addr, (uint8_t*)i2c_receiving_data, 1);
+	} while(i2c_receiving_data[0] == 'E');
+
+	i2c_sending_data = 0x21;
+	i2c_drv_MasterSendData(&i2c_handle, i2c_slave_addr, (uint8_t*)&i2c_sending_data, 1);
+	i2c_drv_MasterReceiveData(&i2c_handle, i2c_slave_addr, (uint8_t*)i2c_receiving_data, i2c_receiving_data[0]);
+
+
 
 	#endif
 
