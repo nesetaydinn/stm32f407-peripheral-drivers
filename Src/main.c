@@ -65,6 +65,20 @@ void spiIRQEvent(void *self, uint8_t event)
 }
 #endif
 
+#if I2C_EN
+uint8_t i2c_slave_addr = 0x14;
+uint8_t i2c_sending_data = 0x20;
+uint8_t i2c_receiving_data[32];
+
+void i2cIRQEvent(void *self, uint8_t event)
+{
+	if (_I2C_IRQ_EVENT_TX_CMPLT == event)
+	{
+		i2c_drv_MasterReceiveDataIT(&i2c_handle, i2c_slave_addr, (uint8_t*)i2c_receiving_data, i2c_receiving_data[0]);
+	}
+}
+#endif
+
 int main(void)
 {
 	#if GPIO_EN
@@ -79,7 +93,7 @@ int main(void)
 	gpio_drv_PeripheralClockControl(GPIOA, true);
 	gpio_drv_PeripheralClockControl(GPIOC, true);
 
-	gpio_exti_drv_Init(&user_btn_pin, GPIOA, 0, _GPIO_PIN_PULL_DOWN, _GPIO_EXTI_PIN_TRIG_RISING_EDGE, 2, toggleLed);
+	gpio_exti_drv_Init(&user_btn_pin, GPIOA, 0, _GPIO_PIN_PULL_DOWN, _GPIO_EXTI_PIN_TRIG_RISING_EDGE, 4, toggleLed);
 	gpio_exti_drv_Init(&falling_edge_trig_test, GPIOC, 6, _GPIO_PIN_PULL_UP, _GPIO_EXTI_PIN_TRIG_FALLING_EDGE, 1, NULL);
 	#endif
 
@@ -156,9 +170,6 @@ int main(void)
 
 	i2c_drv_Init(&i2c_handle, I2C1, i2c1_config);
 
-	uint8_t i2c_slave_addr = 0x14;
-	uint8_t i2c_sending_data = 0x20;
-	uint8_t i2c_receiving_data[32];
 
 	do
 	{
@@ -166,11 +177,10 @@ int main(void)
 		i2c_drv_MasterReceiveData(&i2c_handle, i2c_slave_addr, (uint8_t*)i2c_receiving_data, 1);
 	} while(i2c_receiving_data[0] == 'E');
 
+	i2c_drv_SetInterrupts(&i2c_handle, 4, i2cIRQEvent);
+
 	i2c_sending_data = 0x21;
-	i2c_drv_MasterSendData(&i2c_handle, i2c_slave_addr, (uint8_t*)&i2c_sending_data, 1);
-	i2c_drv_MasterReceiveData(&i2c_handle, i2c_slave_addr, (uint8_t*)i2c_receiving_data, i2c_receiving_data[0]);
-
-
+	i2c_drv_MasterSendDataIT(&i2c_handle, i2c_slave_addr, (uint8_t*)&i2c_sending_data, 1);
 
 	#endif
 
@@ -209,3 +219,17 @@ void SPI3_IRQHandler(void)
 	spi_drv_IRQHandler(&spi2_handle);
 }
 #endif
+
+#if I2C_EN
+void I2C1_EV_IRQHandler(void)
+{
+	i2c_drv_EventIRQHandler(&i2c_handle);
+}
+
+void I2C1_ER_IRQHandler(void)
+{
+	i2c_drv_ErrorIRQHandler(&i2c_handle);
+}
+#endif
+
+

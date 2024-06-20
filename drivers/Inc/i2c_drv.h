@@ -110,6 +110,36 @@
 
 typedef enum
 {
+    _I2C_IRQ_NO_1_EV = 0x1F,
+    _I2C_IRQ_NO_1_ER = 0x20,
+    _I2C_IRQ_NO_2_EV = 0x21,
+    _I2C_IRQ_NO_2_ER = 0x22,
+    _I2C_IRQ_NO_3_EV = 0x48,
+    _I2C_IRQ_NO_3_ER = 0x49
+} I2C_IRQ_nubmers_t;
+
+typedef enum
+{
+    _I2C_IRQ_STATE_READY      = 0x00,
+    _I2C_IRQ_STATE_BUSY_IN_RX = 0x01,
+    _I2C_IRQ_STATE_BUSY_IN_TX = 0x02
+} I2C_IRQ_State_t;
+
+typedef enum
+{
+    _I2C_IRQ_EVENT_TX_CMPLT = 0x01,
+    _I2C_IRQ_EVENT_RX_CMPLT = 0x02,
+    _I2C_IRQ_EVENT_STOP     = 0x03,
+    _I2C_IRQ_EVENT_BERR     = 0x04,
+    _I2C_IRQ_EVENT_ARLO     = 0x05,
+    _I2C_IRQ_EVENT_AF       = 0x06,
+    _I2C_IRQ_EVENT_OVR      = 0x07,
+    _I2C_IRQ_EVENT_PECERR   = 0x08,
+    _I2C_IRQ_EVENT_TIMEOUT  = 0x09,
+} I2C_IRQ_Event_t;
+
+typedef enum
+{
     _I2C_SCL_SPEED_SM = 100000, // Standart Mode Speed
     _I2C_SCL_SPEED_FM = 400000  // Fast Mode Speed
 } I2C_SCL_Standart_speeds_t;
@@ -136,16 +166,29 @@ typedef enum
 
 typedef struct
 {
-    uint32_t scl_speed;       // Clock speed defined as `I2C_SCL_Standart_speeds_t` and set-able other value
-    uint16_t device_addr;     // Device address
-    uint8_t ack_control;      // Acknowlage control defined as `I2C_Ack_state_t`
-    uint8_t fm_duty_cycle;    // Fast mode duty cycle defined as `I2C_FM_duty_cycle_t`
+    uint32_t scl_speed;    // Clock speed defined as `I2C_SCL_Standart_speeds_t` and set-able other value
+    uint16_t device_addr;  // Device address
+    uint8_t ack_control;   // Acknowlage control defined as `I2C_Ack_state_t`
+    uint8_t fm_duty_cycle; // Fast mode duty cycle defined as `I2C_FM_duty_cycle_t`
+    bool is_irq_enable;    // I2C IRQ status, true: enable
+    uint8_t irq_priority;  // I2C interrupt priority
 } I2C_config_t;
 
 typedef struct
 {
     I2C_Reg_t *i2cx;
     I2C_config_t config;
+    uint8_t state;   // I2C state as `I2C_IRQ_State_t`
+    uint8_t slave_addr;
+    struct {
+        uint8_t *buffer;
+        uint32_t len;
+    } tx, rx;
+    /* @brief Interrupt callback event
+     * @param self I2C handle address
+     * @param event interrupt event as `I2C_IRQ_Event_t`
+     * */
+    void (*irq_event)(void *self, uint8_t event);
 } I2C_Handle_t;
 
 
@@ -153,8 +196,18 @@ typedef struct
 
 bool i2c_drv_Init(I2C_Handle_t *self, I2C_Reg_t *i2cx, I2C_config_t config);
 
+bool i2c_drv_SetInterrupts(I2C_Handle_t *self, uint8_t irq_priority, void (*irq_event)(void *self, uint8_t event));
+
 bool i2c_drv_MasterSendData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
 
 bool i2c_drv_MasterReceiveData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
+
+bool i2c_drv_MasterSendDataIT(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
+
+bool i2c_drv_MasterReceiveDataIT(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
+
+void i2c_drv_EventIRQHandler(I2C_Handle_t *self);
+
+void i2c_drv_ErrorIRQHandler(I2C_Handle_t *self);
 
 #endif /* INC_I2C_DRV_H_ */

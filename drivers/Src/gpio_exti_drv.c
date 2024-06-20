@@ -90,11 +90,11 @@ bool gpio_exti_drv_Init(GPIO_EXTI_Handle_t *self, GPIO_Reg_t *gpiox, GPIO_Pin_nu
 		*arm_nvic_iser_base_addr |= (1 << (self->pin_config.irq_num % 32));
 	}
 
-	uint8_t iprx = irq_priority / 4;
-	uint8_t iprx_section = irq_priority % 4;
+	uint8_t iprx = self->pin_config.irq_num / 4;
+	uint8_t iprx_section = self->pin_config.irq_num % 4;
 	uint8_t shift_amount = (8 * iprx_section) + 4;
-	volatile uint32_t *arm_nvic_pr_base_addr = (volatile uint32_t *)0xE000E400;
-	*(arm_nvic_pr_base_addr + (iprx * 4)) |= (irq_priority << shift_amount);
+	volatile uint32_t *arm_nvic_pr_base_addr = (volatile uint32_t *)(0xE000E400 + (iprx * 4));
+	*arm_nvic_pr_base_addr |= (irq_priority << shift_amount);
 
 	return true;
 }
@@ -127,8 +127,8 @@ bool gpio_exti_drv_DeInit(GPIO_EXTI_Handle_t *self)
 	uint8_t iprx = self->pin_config.irq_priority / 4;
 	uint8_t iprx_section = self->pin_config.irq_priority % 4;
 	uint8_t shift_amount = (8 * iprx_section) + 4;
-	volatile uint32_t *arm_nvic_pr_base_addr = (volatile uint32_t *)0xE000E400;
-	*(arm_nvic_pr_base_addr + (iprx * 4)) &= ~(self->pin_config.irq_priority << shift_amount);
+	volatile uint32_t *arm_nvic_pr_base_addr = (volatile uint32_t *)(0xE000E400 + (iprx * 4));
+	*arm_nvic_pr_base_addr &= ~(self->pin_config.irq_priority << shift_amount);
 
 	/* Disable the EXTI interrupt delivery */
 	EXTI->IMR &= ~(1 << self->gpio_handle.pin_config.number);
