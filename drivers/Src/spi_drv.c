@@ -9,7 +9,7 @@
 
 /**
  * @brief SPI Peripheral Clock Control
- * @param self SPI handle base address
+ * @param self SPI peripheral handle base address
  * @param state Peripheral clock enabling control, true: enable
  * @return bool When the operation is successfully; return true 
  */
