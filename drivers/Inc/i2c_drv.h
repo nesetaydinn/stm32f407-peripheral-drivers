@@ -9,7 +9,6 @@
 #define INC_I2C_DRV_H_
 
 #include "stm32f407xx.h"
-#include "gpio_drv.h"
 
 #include <string.h>
 #include <stdbool.h>
@@ -127,15 +126,17 @@ typedef enum
 
 typedef enum
 {
-    _I2C_IRQ_EVENT_TX_CMPLT = 0x01,
-    _I2C_IRQ_EVENT_RX_CMPLT = 0x02,
-    _I2C_IRQ_EVENT_STOP     = 0x03,
-    _I2C_IRQ_EVENT_BERR     = 0x04,
-    _I2C_IRQ_EVENT_ARLO     = 0x05,
-    _I2C_IRQ_EVENT_AF       = 0x06,
-    _I2C_IRQ_EVENT_OVR      = 0x07,
-    _I2C_IRQ_EVENT_PECERR   = 0x08,
-    _I2C_IRQ_EVENT_TIMEOUT  = 0x09,
+    _I2C_IRQ_EVENT_TX_CMPLT = 0x01, // Master mode
+    _I2C_IRQ_EVENT_RX_CMPLT = 0x02, // Master mode
+    _I2C_IRQ_EVENT_DATA_REQ = 0x03, // Slave mode
+    _I2C_IRQ_EVENT_DATA_RCV = 0x04, // Slave mode
+    _I2C_IRQ_EVENT_STOP     = 0x05,
+    _I2C_IRQ_EVENT_BERR     = 0x06,
+    _I2C_IRQ_EVENT_ARLO     = 0x07,
+    _I2C_IRQ_EVENT_AF       = 0x08,
+    _I2C_IRQ_EVENT_OVR      = 0x09,
+    _I2C_IRQ_EVENT_PECERR   = 0x0A,
+    _I2C_IRQ_EVENT_TIMEOUT  = 0x0B
 } I2C_IRQ_Event_t;
 
 typedef enum
@@ -194,20 +195,103 @@ typedef struct
 
 /* FUNCTIONs */
 
+/**
+ * @brief I2C configuration and initialization
+ * @param self I2C handle base address
+ * @param i2cx I2C peripheral base address
+ * @param config I2C peripheral configuration as `I2C_config_t`
+ * @return bool When the initialization is succesfully return true
+ */
 bool i2c_drv_Init(I2C_Handle_t *self, I2C_Reg_t *i2cx, I2C_config_t config);
 
+/**
+ * @brief I2C interrupt enable
+ * @param self I2C handle base address
+ * @param irq_priority IRQ priority
+ * @param irq_event IRQ triggered event function
+ * @return bool When the operation is success return true
+ */
 bool i2c_drv_SetInterrupts(I2C_Handle_t *self, uint8_t irq_priority, void (*irq_event)(void *self, uint8_t event));
 
+/**
+ * @brief I2C send data as polling (blocking mode)
+ * @param self I2C handle base address
+ * @param data Base address of transmitting data
+ * @param data_len Total lenght of transmitting data
+ * @return bool When the operation is success return true
+ */
 bool i2c_drv_MasterSendData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
 
-bool i2c_drv_MasterReceiveData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
-
+/**
+ * @brief I2C send data as interrupt (non-blocking mode)
+ * @param self I2C handle base address
+ * @param data Base address of transmitting data
+ * @param data_len Total lenght of transmitting data
+ * @return bool When the operation is success return true
+ */
 bool i2c_drv_MasterSendDataIT(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
 
+/**
+ * @brief I2C receive data as polling (blocking mode)
+ * @param self I2C handle base address
+ * @param data Base address of receiving data
+ * @param data_len Total lenght of receiving data
+ * @return bool When the operation is success return true
+ */
+bool i2c_drv_MasterReceiveData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
+
+/**
+ * @brief I2C receive data as interrupt (non-blocking mode)
+ * @param self I2C handle base address
+ * @param data Base address of receiving data
+ * @param data_len Total lenght of receiving data
+ * @return bool When the operation is success return true
+ */
 bool i2c_drv_MasterReceiveDataIT(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *data, uint32_t data_len);
 
+/**
+ * @brief I2C slave mode receive and transmitting enable or disable control in interrupt mode 
+ * @param self I2C handle base address
+ * @param state Enabling (true) or disabling (false) status of interrupts
+ * @return bool When the operation is success return true
+ */
+bool i2c_drv_SlaveInterruptsManagement(I2C_Handle_t *self, bool state);
+
+/**
+ * @brief I2C send data in slave mode
+ * @param self I2C handle base address
+ * @param data Transmitting data value
+ * @return
+ */
+void i2c_drv_SlaveSendData(I2C_Handle_t *self, uint8_t data);
+
+/**
+ * @brief I2C reveive data in slave mode
+ * @param self I2C handle base address
+ * @param data Receiving data value
+ * @return
+ */
+uint8_t i2c_drv_SlaveReceiveData(I2C_Handle_t *self);
+
+/**
+ * @brief I2C Event Interrupts handler
+ * @param self I2C handle base address
+ * @return
+ */
 void i2c_drv_EventIRQHandler(I2C_Handle_t *self);
 
+/**
+ * @brief I2C Error Interrupts handler
+ * @param self I2C handle base address
+ * @return
+ */
 void i2c_drv_ErrorIRQHandler(I2C_Handle_t *self);
+
+/**
+ * @brief I2C de-initialization
+ * @param self I2C handle base address
+ * @return bool When the de-initializated the handle return true
+ */
+bool i2c_drv_DeInit(I2C_Handle_t *self);
 
 #endif /* INC_I2C_DRV_H_ */

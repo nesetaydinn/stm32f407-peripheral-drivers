@@ -7,31 +7,148 @@
 
 #include "i2c_drv.h"
 
-
-/*
- * I2C error interrupt handling
- * I2C event interrupt handling
- * */
-
 /**
  * @brief I2C Peripheral Clock Control
- * @param self I2C handle base address
+ * @param i2cx I2C peripheral handle base address
  * @param state Peripheral clock enabling control, true: enable
  * @return bool When the operation is successfully; return true 
  */
 bool i2c_drv_PeripheralClockControl(I2C_Reg_t *i2cx, bool state);
 
+/**
+ * @brief Start bit interrupt handling, the interrupt comes when start condition generated
+ * the interrupt comes only in Master mode
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_SBInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Address sent or matched bit interrupt handling,
+ * the interrupt cames as sent interrupt mode is master,
+ * in the slave type cames as mathed interrupt
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_ADDRInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Byte transfer finished interrupt handling
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_BTFInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief In the slave mode, Stop detection interrupt handling
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_STOPFInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Data register empty (transmitters) interrupt handling
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_TXEInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Data register not empty (receivers) interrupt handling
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_RXNEInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Bus error interrupt handling
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_BERRInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Arbitration lost interrupt handling in master mode
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_ARLOInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Acknowledge failure status bit interrupt handling
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_AFInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Overrun or Underrun error bit interrupt handling
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_OVRInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief PEC Error in reception interrupt handling,
+ * comes when receiver returns NACK after PEC reception
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_PECERRInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief Timeout or Tlow error status bit interrupt handling,
+ * the interrupt comes, if SCL remained LOW for 25 ms
+ * @param self I2C handle base address
+ * @return 
+ */
+void i2c_drv_TIMEOUTInterruptHandler(I2C_Handle_t *self);
+
+/**
+ * @brief I2C Check the flag is set on Status register
+ * @param i2cx I2C handle base address
+ * @param flag Interested flag
+ * @return When the interested flag is set return true
+ */
+bool i2c_drv_GetFlagStatus(I2C_Reg_t *i2cx, uint32_t flag);
+
+/**
+ * @brief Create a start condition for I2C peripheral
+ * @param i2cx I2C handle base address
+ * @return
+ */
 void i2c_drv_GenerateStartCondition(I2C_Reg_t *i2cx);
 
+/**
+ * @brief Send the slave address to data register 
+ * @param i2cx I2C handle base address
+ * @param slave_addr Default slave address of the device
+ * @param operation I2C operation writing or reading, defined as `I2C_Addr_operation_t`
+ * @return
+ */
 void i2c_drv_SendAddress(I2C_Reg_t *i2cx, uint8_t slave_addr, I2C_Addr_operation_t operation);
 
+/**
+ * @brief Acknowlage controller management
+ * @param i2cx I2C handle base address
+ * @param state New I2C acknowlage or not-acknowlage state, defined as `I2C_Ack_state_t`
+ * @return
+ */
 void i2c_drv_ControlACK(I2C_Reg_t *i2cx, I2C_Ack_state_t state);
 
+/**
+ * @brief Addr flag clear helper 
+ * @param self I2C handle base address
+ * @return
+ */
 void i2c_drv_ClearAddrFlag(I2C_Handle_t *self);
 
+/**
+ * @brief Create a stop condition for I2C peripheral
+ * @param i2cx I2C handle base address
+ * @return
+ */
 void i2c_drv_GenerateStopCondition(I2C_Reg_t *i2cx);
-
-bool i2c_drv_GetFlagStatus(I2C_Reg_t *i2cx, uint32_t flag);
 
 bool i2c_drv_Init(I2C_Handle_t *self, I2C_Reg_t *i2cx, I2C_config_t config)
 {
@@ -263,6 +380,7 @@ bool i2c_drv_MasterReceiveData(I2C_Handle_t *self, uint8_t slave_addr, uint8_t *
         // Disable ACK
         i2c_drv_ControlACK(self->i2cx, _I2C_ACK_DISABLE);
     }
+
     while (data_len)
     {
         if (2 == data_len)
@@ -316,14 +434,40 @@ bool i2c_drv_MasterReceiveDataIT(I2C_Handle_t *self, uint8_t slave_addr, uint8_t
     return false;
 }
 
-bool i2c_drv_SlaveTransmit(I2C_Handle_t *self)
+bool i2c_drv_SlaveInterruptsManagement(I2C_Handle_t *self, bool state)
 {
+	if (NULL == self)
+        return false;
+
+    if (!self->config.is_irq_enable)
+        return false;
+
+    if (state)
+    {
+        // Enable ITBUFEN control bit
+        self->i2cx->CR2 |= (1 << I2C_CR2_ITBUFEN);
+
+        // Enable ITEVTEN control bit
+        self->i2cx->CR2 |= (1 << I2C_CR2_ITEVTEN);
+        return true;
+    }
+
+    // Disable ITBUFEN control bit
+    self->i2cx->CR2 &= ~(1 << I2C_CR2_ITBUFEN);
+
+    // Disable ITEVTEN control bit
+    self->i2cx->CR2 &= ~(1 << I2C_CR2_ITEVTEN);
     return true;
 }
 
-bool i2c_drv_SlaveReceive(I2C_Handle_t *self)
+void i2c_drv_SlaveSendData(I2C_Handle_t *self, uint8_t data)
 {
-    return true;
+    self->i2cx->DR = data;
+}
+
+uint8_t i2c_drv_SlaveReceiveData(I2C_Handle_t *self)
+{
+    return (uint8_t)self->i2cx->DR;
 }
 
 bool i2c_drv_PeripheralClockControl(I2C_Reg_t *i2cx, bool state)
@@ -402,7 +546,7 @@ void i2c_drv_STOPFInterruptHandler(I2C_Handle_t *self)
 
 void i2c_drv_TXEInterruptHandler(I2C_Handle_t *self)
 {
-    if (self->i2cx->SR2 & I2C_SR2_MSL_FLAG)
+    if ((self->i2cx->SR2 & I2C_SR2_MSL_FLAG) == I2C_SR2_MSL_FLAG)
     {
         if (_I2C_IRQ_STATE_BUSY_IN_TX == self->state)
         {
@@ -414,11 +558,19 @@ void i2c_drv_TXEInterruptHandler(I2C_Handle_t *self)
             }
         }
     }
+    else
+    {
+        if ((self->i2cx->SR2 & I2C_SR2_TRA_FLAG) == I2C_SR2_TRA_FLAG)
+        {
+            if (NULL != self->irq_event)
+                self->irq_event((void*)self, _I2C_IRQ_EVENT_DATA_REQ);
+        }
+    }
 }
 
 void i2c_drv_RXNEInterruptHandler(I2C_Handle_t *self)
 {
-    if (self->i2cx->SR2 & I2C_SR2_MSL_FLAG)
+    if ((self->i2cx->SR2 & I2C_SR2_MSL_FLAG) == I2C_SR2_MSL_FLAG)
     {
         if (_I2C_IRQ_STATE_BUSY_IN_RX == self->state)
         {
@@ -456,48 +608,56 @@ void i2c_drv_RXNEInterruptHandler(I2C_Handle_t *self)
             }
         }
     }
+    else
+    {
+        if ((self->i2cx->SR2 & I2C_SR2_TRA_FLAG) != I2C_SR2_TRA_FLAG)
+        {
+            if (NULL != self->irq_event)
+                self->irq_event((void*)self, _I2C_IRQ_EVENT_DATA_RCV);
+        }
+    }
 }
 
 void i2c_drv_EventIRQHandler(I2C_Handle_t *self)
 {
     // Check ITEVTEN control bit
-    if (self->i2cx->CR2 & (1 << I2C_CR2_ITEVTEN))
+    if ((self->i2cx->CR2 & (1 << I2C_CR2_ITEVTEN)) == (1 << I2C_CR2_ITEVTEN))
     {
         // Check SB event (SB flag is only active in master mode)
-        if (self->i2cx->SR1 & I2C_SR1_SB_FLAG)
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_SB_FLAG))
         {
             i2c_drv_SBInterruptHandler(self);
         }
 
         // Check ADDR event
-        if (self->i2cx->SR1 & I2C_SR1_ADDR_FLAG)
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_ADDR_FLAG))
         {
             i2c_drv_ADDRInterruptHandler(self);
         }
 
         // Check BTF event
-        if (self->i2cx->SR1 & I2C_SR1_BTF_FLAG)
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_BTF_FLAG))
         {
             i2c_drv_BTFInterruptHandler(self);
         }
 
         // Check STOPF event
-        if (self->i2cx->SR1 & I2C_SR1_STOPF_FLAG)
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_STOPF_FLAG))
         {
             i2c_drv_STOPFInterruptHandler(self);
         }
 
         // Check ITBUFEN control bit
-        if (self->i2cx->CR2 & (1 << I2C_CR2_ITBUFEN))
+        if ((self->i2cx->CR2 & (1 << I2C_CR2_ITBUFEN)) == (1 << I2C_CR2_ITBUFEN))
         {
             // Check TXE event
-            if (self->i2cx->SR1 & I2C_SR1_TXE_FLAG)
+            if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_TXE_FLAG))
             {
                 i2c_drv_TXEInterruptHandler(self);
             }
 
             // Check RXNE event
-            if (self->i2cx->SR1 & I2C_SR1_RXNE_FLAG)
+            if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_RXNE_FLAG))
             {
                 i2c_drv_RXNEInterruptHandler(self);
             }
@@ -556,40 +716,40 @@ void i2c_drv_TIMEOUTInterruptHandler(I2C_Handle_t *self)
 void i2c_drv_ErrorIRQHandler(I2C_Handle_t *self)
 {
     // Check ITERREN control bit
-    if (self->i2cx->CR2 & (1 << I2C_CR2_ITERREN))
+    if ((self->i2cx->CR2 & (1 << I2C_CR2_ITERREN)) == (1 << I2C_CR2_ITERREN))
     {
-        // Check Bus Error 
-        if (self->i2cx->SR1 & I2C_SR1_BERR_FLAG)
+        // Check Bus Error
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_BERR_FLAG))
         {
             i2c_drv_BERRInterruptHandler(self);
         }
 
-        // Check Arbitration lost Error 
-        if (self->i2cx->SR1 & I2C_SR1_ARLO_FLAG)
+        // Check Arbitration lost Error
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_ARLO_FLAG))
         {
             i2c_drv_ARLOInterruptHandler(self);
         }
 
-        // Check Acknowledge failure Error 
-        if (self->i2cx->SR1 & I2C_SR1_AF_FLAG)
+        // Check Acknowledge failure Error
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_AF_FLAG))
         {
             i2c_drv_AFInterruptHandler(self);
         }
 
-        // Check Overrun or Underrun Error 
-        if (self->i2cx->SR1 & I2C_SR1_OVR_FLAG)
+        // Check Overrun or Underrun Error
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_OVR_FLAG))
         {
             i2c_drv_OVRInterruptHandler(self);
         }
 
         // Check PEC Error in reception Error 
-        if (self->i2cx->SR1 & I2C_SR1_PECERR_FLAG)
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_PECERR_FLAG))
         {
             i2c_drv_PECERRInterruptHandler(self);
         }
 
         // Check Timeout or Tlow error 
-        if (self->i2cx->SR1 & I2C_SR1_TIMEOUT_FLAG)
+        if (i2c_drv_GetFlagStatus(self->i2cx, I2C_SR1_TIMEOUT_FLAG))
         {
             i2c_drv_TIMEOUTInterruptHandler(self);
         }
@@ -646,5 +806,133 @@ void i2c_drv_GenerateStopCondition(I2C_Reg_t *i2cx)
 
 bool i2c_drv_DeInit(I2C_Handle_t *self)
 {
+	if (NULL == self->i2cx)
+		return false;
+
+    /* Disable Interrupts */
+	uint8_t irq_ev_number = 0;
+	uint8_t irq_err_number = 0;
+
+	if ((volatile I2C_Reg_t *)I2C1_BASE_ADDR == (volatile I2C_Reg_t *)self->i2cx)
+    {
+        irq_ev_number = _I2C_IRQ_NO_1_EV;
+        irq_err_number = _I2C_IRQ_NO_1_ER;
+    }
+	else if ((volatile I2C_Reg_t *)I2C2_BASE_ADDR == (volatile I2C_Reg_t *)self->i2cx)
+    {
+        irq_ev_number = _I2C_IRQ_NO_2_EV;
+        irq_err_number = _I2C_IRQ_NO_2_ER;
+    }
+	else if ((volatile I2C_Reg_t *)I2C3_BASE_ADDR == (volatile I2C_Reg_t *)self->i2cx)
+    {
+        irq_ev_number = _I2C_IRQ_NO_3_EV;
+        irq_err_number = _I2C_IRQ_NO_3_ER;
+    }
+	else
+		return false;
+
+    /* Disable NVIC IRQ*/
+
+    volatile uint32_t *arm_nvic_iser_base_addr;
+    if (irq_ev_number < 32)
+    {
+    	arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E100;
+        *arm_nvic_iser_base_addr &= ~(1 << irq_ev_number);
+    }
+    else if ((irq_ev_number >= 32) && (irq_ev_number < 64))
+    {
+    	arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E104;
+        *arm_nvic_iser_base_addr &= ~(1 << (irq_ev_number % 32));
+    }
+    else
+    {
+    	arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E108;
+        *arm_nvic_iser_base_addr &= ~(1 << (irq_ev_number % 64));
+    }
+
+    if (irq_err_number < 32)
+    {
+    	arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E100;
+        *arm_nvic_iser_base_addr &= ~(1 << irq_err_number);
+    }
+    else if ((irq_err_number >= 32) && (irq_err_number < 64))
+    {
+    	arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E104;
+        *arm_nvic_iser_base_addr &= ~(1 << (irq_err_number % 32));
+    }
+    else
+    {
+    	arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E108;
+        *arm_nvic_iser_base_addr &= ~(1 << (irq_err_number % 64));
+    }
+
+	uint8_t iprx = irq_ev_number / 4;
+	uint8_t iprx_section = irq_ev_number % 4;
+	uint8_t shift_amount = (8 * iprx_section) + 4;
+	volatile uint32_t *arm_nvic_pr_base_addr = (volatile uint32_t *)(0xE000E400 + (iprx * 4));
+	*arm_nvic_pr_base_addr &= ~(self->config.irq_priority << shift_amount);
+
+	iprx = irq_err_number / 4;
+	iprx_section = irq_err_number % 4;
+	shift_amount = (8 * iprx_section) + 4;
+    arm_nvic_pr_base_addr = (volatile uint32_t *)(0xE000E400 + (iprx * 4));
+    *arm_nvic_pr_base_addr &= ~(self->config.irq_priority << shift_amount);
+
+    // Disable ITERREN control bit
+    self->i2cx->CR2 &= ~(1 << I2C_CR2_ITERREN);
+
+    // Disable ITBUFEN control bit
+    self->i2cx->CR2 &= ~(1 << I2C_CR2_ITBUFEN);
+
+    // Disable ITEVTEN control bit
+    self->i2cx->CR2 &= ~(1 << I2C_CR2_ITEVTEN);
+
+    self->irq_event = NULL;
+
+	/* De-set config */
+
+    // De-set enable to peripheral
+    self->i2cx->CR1 &= ~(1 << I2C_CR1_PE);
+
+    // De-set ack configuration
+    self->i2cx->CR1 &= ~(self->config.ack_control << I2C_CR1_ACK);
+
+    // De-set freq configuration
+    uint32_t apb1_speed_mhz = __RCC_GET_APB1_SPEED() / 1000000;
+    self->i2cx->CR2 &= ~(apb1_speed_mhz & 0x3F);
+
+    // De-set own address configuration
+    self->i2cx->OAR1 &= ~(self->config.device_addr & 0x7F) << I2C_OAR1_ADD7_1;
+
+    // De-set Clock control register configuration
+    uint16_t ccr_val = 0;
+    uint8_t trise = 0;
+    if (self->config.scl_speed > 100000)
+    {
+        self->i2cx->CCR &= ~(1 << I2C_CCR_F_S);
+        if (self->config.fm_duty_cycle)
+            ccr_val = __RCC_GET_APB1_SPEED() / (25 * self->config.scl_speed);
+        else
+            ccr_val = __RCC_GET_APB1_SPEED() / (3 * self->config.scl_speed);
+        trise = ((apb1_speed_mhz * 300) / 1000) + 1;
+    }
+    else
+    {
+        ccr_val = __RCC_GET_APB1_SPEED() / (2 * self->config.scl_speed);
+        trise = apb1_speed_mhz + 1;
+    }
+    self->i2cx->CCR &= ~(self->config.fm_duty_cycle << I2C_CCR_DUTY);
+    self->i2cx->CCR &= ~(ccr_val & 0x0FFF);
+
+    // De-set Trise configuration
+    self->i2cx->TRISE &= ~(trise & 0x3F);
+
+    // Close peripheral clock
+    i2c_drv_PeripheralClockControl(self->i2cx, false);
+
+
+	self->i2cx = NULL;
+	memset(self, 0, sizeof(*self));
+
     return true;
 }

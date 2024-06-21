@@ -66,15 +66,20 @@ void spiIRQEvent(void *self, uint8_t event)
 #endif
 
 #if I2C_EN
-uint8_t i2c_slave_addr = 0x14;
-uint8_t i2c_sending_data = 0x20;
-uint8_t i2c_receiving_data[32];
+uint8_t i2c_recieved_byte_size;
+uint8_t i2c_recieved_buff[32];
 
 void i2cIRQEvent(void *self, uint8_t event)
 {
-	if (_I2C_IRQ_EVENT_TX_CMPLT == event)
+	if (_I2C_IRQ_EVENT_DATA_REQ == event)
 	{
-		i2c_drv_MasterReceiveDataIT(&i2c_handle, i2c_slave_addr, (uint8_t*)i2c_receiving_data, i2c_receiving_data[0]);
+		i2c_drv_SlaveSendData(&i2c_handle, 10);
+		i2c_recieved_byte_size = 0;
+	}
+
+	if (_I2C_IRQ_EVENT_DATA_RCV == event)
+	{
+		i2c_recieved_buff[i2c_recieved_byte_size++] = i2c_drv_SlaveReceiveData(&i2c_handle);
 	}
 }
 #endif
@@ -164,23 +169,13 @@ int main(void)
 
 	I2C_config_t i2c1_config;
 	i2c1_config.ack_control = _I2C_ACK_ENABLE;
-	i2c1_config.device_addr = 0x00;
+	i2c1_config.device_addr = 0x10;
 	i2c1_config.fm_duty_cycle = _I2C_FM_DUTY_CYCLE_2;
 	i2c1_config.scl_speed = _I2C_SCL_SPEED_SM;
 
 	i2c_drv_Init(&i2c_handle, I2C1, i2c1_config);
-
-
-	do
-	{
-		i2c_drv_MasterSendData(&i2c_handle, i2c_slave_addr, (uint8_t*)&i2c_sending_data, 1);
-		i2c_drv_MasterReceiveData(&i2c_handle, i2c_slave_addr, (uint8_t*)i2c_receiving_data, 1);
-	} while(i2c_receiving_data[0] == 'E');
-
 	i2c_drv_SetInterrupts(&i2c_handle, 4, i2cIRQEvent);
-
-	i2c_sending_data = 0x21;
-	i2c_drv_MasterSendDataIT(&i2c_handle, i2c_slave_addr, (uint8_t*)&i2c_sending_data, 1);
+	i2c_drv_SlaveInterruptsManagement(&i2c_handle, true);
 
 	#endif
 
