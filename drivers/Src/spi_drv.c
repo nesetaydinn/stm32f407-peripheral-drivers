@@ -453,10 +453,10 @@ bool spi_drv_DeInit(SPI_Handle_t *self)
 
 		/* Disable NVIC IRQ*/
 		volatile uint32_t *arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E104;
-		*arm_nvic_iser_base_addr &= (1 << (irq_number % 32));
+		*arm_nvic_iser_base_addr &= ~(1 << (irq_number % 32));
 
-		uint8_t iprx = self->config.irq_priority / 4;
-		uint8_t iprx_section = self->config.irq_priority % 4;
+		uint8_t iprx = irq_number / 4;
+		uint8_t iprx_section = irq_number % 4;
 		uint8_t shift_amount = (8 * iprx_section) + 4;
 		volatile uint32_t *arm_nvic_pr_base_addr = (volatile uint32_t *)(0xE000E400 + (iprx * 4));
 		*arm_nvic_pr_base_addr &= ~(self->config.irq_priority << shift_amount);
