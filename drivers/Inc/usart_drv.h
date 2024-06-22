@@ -109,10 +109,18 @@ typedef enum
     _USART_IRQ_STATE_BUSY_IN_TX = 0x02
 } USART_IRQ_State_t;
 
+
+
 typedef enum
 {
-    _USART_IRQ_EVENT_TX_CMPLT = 0x01,
-    _USART_IRQ_EVENT_RX_CMPLT = 0x02,
+    _USART_IRQ_EVENT_FE_ERROR   = -6,
+    _USART_IRQ_EVENT_LBD_ERROR  = -5,
+    _USART_IRQ_EVENT_ORE_ERROR  = -4,
+    _USART_IRQ_EVENT_PE_ERROR   = -3,
+    _USART_IRQ_EVENT_IDLE_ERROR = -2,
+    _USART_IRQ_EVENT_CTS_ERROR  = -1,
+    _USART_IRQ_EVENT_RX_CMPLT   =  1,
+    _USART_IRQ_EVENT_TX_CMPLT   =  2
 } USART_IRQ_Event_t;
 
 typedef enum
@@ -223,6 +231,8 @@ bool usart_drv_SendDataIT(USART_Handle_t *self, uint8_t *data, uint32_t data_len
 
 bool usart_drv_ReceiveData(USART_Handle_t *self, uint8_t *data, uint32_t data_len);
 bool usart_drv_ReceiveDataIT(USART_Handle_t *self, uint8_t *data, uint32_t data_len);
+
+void usart_drv_IRQHandler(USART_Handle_t *self);
 
 /**
  * @brief USART de-initialization

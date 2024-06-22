@@ -93,6 +93,19 @@ void i2cIRQEvent(void *self, uint8_t event)
 
 #if USART_EN
 
+void usartIRQEvent(void *self, uint8_t event)
+{
+	if (_USART_IRQ_EVENT_RX_CMPLT == event)
+	{
+		if ((0xFF == usart_receiving_data[0]) && (0xFE == usart_receiving_data[1]))
+			usart_drv_ReceiveDataIT(&usart_handle, usart_receiving_data, usart_receiving_data[2]);
+	}
+	if (_USART_IRQ_EVENT_TX_CMPLT == event)
+	{
+		usart_drv_ReceiveDataIT(&usart_handle, usart_receiving_data, 3);
+	}
+}
+
 #endif
 
 int main(void)
@@ -209,19 +222,17 @@ int main(void)
 	USART_config_t usart_config;
 	usart_config.mode = _USART_MODE_TX_RX;
 	usart_config.baudrate = _USART_STANDART_BR_115200;
-	usart_config.nosb = _USART_STOP_BITS_1;
-	usart_config.word_length = _USART_WORD_LENGTH_8BITS;
-	usart_config.parity_control = _USART_PARITY_CONTROL_DIS;
+	usart_config.nosb = _USART_STOP_BITS_2;
+	usart_config.word_length = _USART_WORD_LENGTH_9BITS;
+	usart_config.parity_control = _USART_PARITY_CONTROL_EVEN;
 	usart_config.hw_flow_control = _USART_HW_FLOW_CONTROL_NONE;
 	usart_drv_Init(&usart_handle, USART2, usart_config);
 
 	char usart_sending_data[] = "Hello, there...";
 
-	usart_drv_SendData(&usart_handle, (uint8_t*)usart_sending_data, strlen(usart_sending_data));
+	usart_drv_SetInterrupts(&usart_handle, 5, usartIRQEvent);
 
-	usart_drv_ReceiveData(&usart_handle, usart_receiving_data, 1);
-
-	usart_drv_ReceiveData(&usart_handle, usart_receiving_data, usart_receiving_data[0]);
+	usart_drv_SendDataIT(&usart_handle, (uint8_t*)usart_sending_data, strlen(usart_sending_data));
 
 
 
@@ -276,5 +287,8 @@ void I2C1_ER_IRQHandler(void)
 #endif
 
 #if USART_EN
-
+void USART2_IRQHandler(void)
+{
+	usart_drv_IRQHandler(&usart_handle);
+}
 #endif
