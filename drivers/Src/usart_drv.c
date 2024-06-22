@@ -15,6 +15,76 @@
 bool usart_drv_PeripheralClockControl(USART_Reg_t *usartx, bool state);
 
 /**
+ * @brief Transmission complete interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_TCInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief Transmit data register empty interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_TXEInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief Read data register not empty interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_RXNEInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief CTS flag is set interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_CTSInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief Overrun error interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_OREInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief IDLE line detected interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_IDLEInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief Parity error interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_PEInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief LIN break detection flag interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_LBDInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief Noise detected flag interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_NFInterruptHandler(USART_Handle_t *self);
+
+/**
+ * @brief Framing error interrupt handling
+ * @param self USART handle base address
+ * @return
+ */
+void usart_drv_FEInterruptHandler(USART_Handle_t *self);
+
+/**
  * @brief USART Check the flag is set on Status register
  * @param usartx USART handle base address
  * @param flag Interested flag
@@ -391,15 +461,6 @@ void usart_drv_TXEInterruptHandler(USART_Handle_t *self)
     }
 }
 
-void usart_drv_CTSInterruptHandler(USART_Handle_t *self)
-{
-
-    self->usartx->SR &= ~(0x0000FFFF & USART_SR_CTS_FLAG);
-
-	if (NULL != self->irq_event)
-		self->irq_event(self, _USART_IRQ_EVENT_CTS_ERROR);
-}
-
 void usart_drv_RXNEInterruptHandler(USART_Handle_t *self)
 {
     if (_USART_IRQ_STATE_BUSY_IN_RX == self->state)
@@ -436,6 +497,15 @@ void usart_drv_RXNEInterruptHandler(USART_Handle_t *self)
         if (NULL != self->irq_event)
             self->irq_event(self, _USART_IRQ_EVENT_RX_CMPLT);
     }
+}
+
+void usart_drv_CTSInterruptHandler(USART_Handle_t *self)
+{
+
+    self->usartx->SR &= ~(0x0000FFFF & USART_SR_CTS_FLAG);
+
+	if (NULL != self->irq_event)
+		self->irq_event(self, _USART_IRQ_EVENT_CTS_ERROR);
 }
 
 void usart_drv_OREInterruptHandler(USART_Handle_t *self)
@@ -479,7 +549,7 @@ void usart_drv_LBDInterruptHandler(USART_Handle_t *self)
     (void)dummy;
 
 	if (NULL != self->irq_event)
-		self->irq_event(self, _USART_IRQ_EVENT_ORE_ERROR);
+		self->irq_event(self, _USART_IRQ_EVENT_LBD_ERROR);
 }
 
 void usart_drv_NFInterruptHandler(USART_Handle_t *self)
@@ -487,7 +557,7 @@ void usart_drv_NFInterruptHandler(USART_Handle_t *self)
     self->usartx->SR &= ~(0x0000FFFF & USART_SR_LBD_FLAG);
 
 	if (NULL != self->irq_event)
-		self->irq_event(self, _USART_IRQ_EVENT_LBD_ERROR);
+		self->irq_event(self, _USART_IRQ_EVENT_NF_ERROR);
 }
 
 void usart_drv_FEInterruptHandler(USART_Handle_t *self)
@@ -592,5 +662,107 @@ bool usart_drv_GetFlagStatus(USART_Reg_t *usartx, uint32_t flag)
 
 bool usart_drv_DeInit(USART_Handle_t *self)
 {
+    /* Disable IRQ */
+    if (self->config.is_irq_enable)
+    {
+        uint32_t irq_number;
+        volatile uint32_t *arm_nvic_iser_base_addr;
+        if (irq_number < 32)
+        {
+            arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E100;
+            *arm_nvic_iser_base_addr &= ~(1 << irq_number);
+        }
+        else if ((irq_number >= 32) && (irq_number < 64))
+        {
+            arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E104;
+            *arm_nvic_iser_base_addr &= ~(1 << (irq_number % 32));
+        }
+        else
+        {
+            arm_nvic_iser_base_addr = (volatile uint32_t *)0xE000E108;
+            *arm_nvic_iser_base_addr &= ~(1 << (irq_number % 64));
+        }
+
+        uint8_t iprx = irq_number / 4;
+        uint8_t iprx_section = irq_number % 4;
+        uint8_t shift_amount = (8 * iprx_section) + 4;
+        volatile uint32_t *arm_nvic_pr_base_addr = (volatile uint32_t *)(0xE000E400 + (iprx * 4));
+        *arm_nvic_pr_base_addr &= ~(self->config.irq_priority << shift_amount);
+
+        if ((_USART_HW_FLOW_CONTROL_CTS_RTS == self->config.hw_flow_control) ||
+            (_USART_HW_FLOW_CONTROL_CTS == self->config.hw_flow_control))
+        {
+            // Disable CTSIE control bit
+            self->usartx->CR3 &= ~( 1 << USART_CR3_CTSIE);
+        }
+
+        // Disable IDLEIE control bit
+        self->usartx->CR1 &= ~( 1 << USART_CR1_IDLEIE);
+
+        if (_USART_PARITY_CONTROL_DIS != self->config.parity_control)
+        {
+            // Disable PEIE control bit
+            self->usartx->CR1 &= ~( 1 << USART_CR1_PEIE);
+        }
+
+        // Disable EIE  control bit
+        self->usartx->CR3 &= ~( 1 << USART_CR3_EIE);
+
+        // Disable RXNEIE control bit
+        self->usartx->CR1 &= ~( 1 << USART_CR1_RXNEIE);
+
+        // Disable TXEIE control bit
+        self->usartx->CR1 &= ~( 1 << USART_CR1_TXEIE);
+
+        // Disable TCIE control bit
+        self->usartx->CR1 &= ~( 1 << USART_CR1_TCIE);
+
+        self->irq_event = NULL;
+    }
+
+    /* Set config */
+    if (_USART_MODE_ONLY_TX == self->config.mode)
+    {
+        self->usartx->CR1 &= ~(1 << USART_CR1_RE);
+        self->usartx->CR1 |= (1 << USART_CR1_TE);
+    }
+    else if (_USART_MODE_ONLY_RX == self->config.mode)
+    {
+        self->usartx->CR1 &= ~(1 << USART_CR1_TE);
+        self->usartx->CR1 |= (1 << USART_CR1_RE);
+    }
+    else if (_USART_MODE_TX_RX == self->config.mode)
+        self->usartx->CR1 |= (1 << USART_CR1_TE) | (1 << USART_CR1_RE);
+    else
+    {
+        self->usartx = NULL;
+        return false;
+    }
+
+    self->usartx->BRR = 0x00;
+
+    self->usartx->CR2 &= ~(self->config.nosb << USART_CR2_STOP);
+
+    self->usartx->CR1 &= ~((self->config.word_length & 0x1) << USART_CR1_M);
+
+    if (_USART_PARITY_CONTROL_DIS != self->config.parity_control)
+    {
+        self->usartx->CR1 |= (1 << USART_CR1_PCE);
+        self->usartx->CR1 &= ~(1 << USART_CR1_PS);
+    }
+
+    if (_USART_HW_FLOW_CONTROL_NONE != self->config.hw_flow_control)
+    {
+        self->usartx->CR3 &= ~(1 << USART_CR3_RTSE);
+        self->usartx->CR3 &= ~(1 << USART_CR3_CTSE);
+    }
+
+    self->usartx->CR1 &= ~(1 << USART_CR1_UE);
+
+	usart_drv_PeripheralClockControl(self->usartx, false);
+
+    self->usartx = NULL;
+	memset(self, 0, sizeof(*self));
+
 	return false;
 }

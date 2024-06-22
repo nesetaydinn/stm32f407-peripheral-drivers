@@ -109,11 +109,10 @@ typedef enum
     _USART_IRQ_STATE_BUSY_IN_TX = 0x02
 } USART_IRQ_State_t;
 
-
-
 typedef enum
 {
-    _USART_IRQ_EVENT_FE_ERROR   = -6,
+    _USART_IRQ_EVENT_FE_ERROR   = -7,
+    _USART_IRQ_EVENT_NF_ERROR   = -6,
     _USART_IRQ_EVENT_LBD_ERROR  = -5,
     _USART_IRQ_EVENT_ORE_ERROR  = -4,
     _USART_IRQ_EVENT_PE_ERROR   = -3,
@@ -226,12 +225,47 @@ bool usart_drv_Init(USART_Handle_t *self, USART_Reg_t *usartx, USART_config_t co
  */
 bool usart_drv_SetInterrupts(USART_Handle_t *self, uint8_t irq_priority, void (*irq_event)(void *self, uint8_t event));
 
+/**
+ * @brief USART send data as polling (blocking mode)
+ * @param self USART handle base address
+ * @param data Base address of transmitting data
+ * @param data_len Total lenght of transmitting data
+ * @return bool When the operation is success return true
+ */
 bool usart_drv_SendData(USART_Handle_t *self, uint8_t *data, uint32_t data_len);
+
+/**
+ * @brief USART send data as interrupt (non-blocking mode)
+ * @param self USART handle base address
+ * @param data Base address of transmitting data
+ * @param data_len Total lenght of transmitting data
+ * @return bool When the operation is success return true
+ */
 bool usart_drv_SendDataIT(USART_Handle_t *self, uint8_t *data, uint32_t data_len);
 
+/**
+ * @brief USART receive data as polling (blocking mode)
+ * @param self USART handle base address
+ * @param data Base address of receiving data
+ * @param data_len Total lenght of receiving data
+ * @return bool When the operation is success return true
+ */
 bool usart_drv_ReceiveData(USART_Handle_t *self, uint8_t *data, uint32_t data_len);
+
+/**
+ * @brief USART receive data as interrupt (non-blocking mode)
+ * @param self USART handle base address
+ * @param data Base address of receiving data
+ * @param data_len Total lenght of receiving data
+ * @return bool When the operation is success return true
+ */
 bool usart_drv_ReceiveDataIT(USART_Handle_t *self, uint8_t *data, uint32_t data_len);
 
+/**
+ * @brief USART Event Interrupts handler
+ * @param self USART handle base address
+ * @return
+ */
 void usart_drv_IRQHandler(USART_Handle_t *self);
 
 /**
