@@ -21,13 +21,14 @@
 #include "gpio_exti_drv.h"
 #include "spi_drv.h"
 #include "i2c_drv.h"
+#include "usart_drv.h"
 
 /* MACROs */
-#define GPIO_EN 1
-#define EXTI_EN 1
-#define SPI_EN  0
-#define I2C_EN  1
-
+#define GPIO_EN  1
+#define EXTI_EN  1
+#define SPI_EN   0
+#define I2C_EN   0
+#define USART_EN 1
 
 /* VARIABLEs */
 
@@ -49,6 +50,12 @@ uint8_t spi_receiving_data[32];
 #if I2C_EN
 GPIO_Handle_t i2c_scl, i2c_data;
 I2C_Handle_t i2c_handle;
+#endif
+
+#if USART_EN
+GPIO_Handle_t usart2_tx, usart2_rx;
+USART_Handle_t usart_handle;
+uint8_t usart_receiving_data[32];
 #endif
 
 #if EXTI_EN
@@ -82,6 +89,10 @@ void i2cIRQEvent(void *self, uint8_t event)
 		i2c_recieved_buff[i2c_recieved_byte_size++] = i2c_drv_SlaveReceiveData(&i2c_handle);
 	}
 }
+#endif
+
+#if USART_EN
+
 #endif
 
 int main(void)
@@ -176,6 +187,43 @@ int main(void)
 	i2c_drv_Init(&i2c_handle, I2C1, i2c1_config);
 	i2c_drv_SetInterrupts(&i2c_handle, 4, i2cIRQEvent);
 	i2c_drv_SlaveInterruptsManagement(&i2c_handle, true);
+	#endif
+
+
+	#if USART_EN
+	/* USART Pins Init */
+
+	/* Alt func mode 7
+	 * PA2 --> USART2_TX
+	 * PA3 --> USART2_RX
+	 * */
+	gpio_drv_PeripheralClockControl(GPIOA, true);
+
+
+	gpio_drv_Init(&usart2_tx, GPIOA, 2, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_PULL_UP, _GPIO_PIN_ALT_FUNC_7);
+
+	gpio_drv_Init(&usart2_rx, GPIOA, 3, _GPIO_PIN_MODE_ALT_FUNC, _GPIO_PIN_OUTPUT_PUSH_PULL,
+		_GPIO_PIN_OUTPUT_VERY_HIGH_SPEED, _GPIO_PIN_PULL_UP, _GPIO_PIN_ALT_FUNC_7);
+
+	USART_config_t usart_config;
+	usart_config.mode = _USART_MODE_TX_RX;
+	usart_config.baudrate = _USART_STANDART_BR_115200;
+	usart_config.nosb = _USART_STOP_BITS_1;
+	usart_config.word_length = _USART_WORD_LENGTH_8BITS;
+	usart_config.parity_control = _USART_PARITY_CONTROL_DIS;
+	usart_config.hw_flow_control = _USART_HW_FLOW_CONTROL_NONE;
+	usart_drv_Init(&usart_handle, USART2, usart_config);
+
+	char usart_sending_data[] = "Hello, there...";
+
+	usart_drv_SendData(&usart_handle, (uint8_t*)usart_sending_data, strlen(usart_sending_data));
+
+	usart_drv_ReceiveData(&usart_handle, usart_receiving_data, 1);
+
+	usart_drv_ReceiveData(&usart_handle, usart_receiving_data, usart_receiving_data[0]);
+
+
 
 	#endif
 
@@ -227,4 +275,6 @@ void I2C1_ER_IRQHandler(void)
 }
 #endif
 
+#if USART_EN
 
+#endif

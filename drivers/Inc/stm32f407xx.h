@@ -337,7 +337,16 @@ typedef SPI_I2S_Reg_t I2S_Reg_t;
 
 /**
  * @brief Inter-integrated circuit interface registers
- * @param
+ * @param CR1 I2C Control register 1
+ * @param CR2 I2C Control register 2
+ * @param OAR1 I2C Own address register 1
+ * @param OAR2 I2C Own address register 2
+ * @param DR I2C Data register
+ * @param SR1 I2C Status register 1
+ * @param SR2 I2C Status register 2
+ * @param CCR I2C Clock control register
+ * @param TRISE I2C TRISE register
+ * @param FLTR I2C FLTR register
  */
 typedef struct __attribute__((packed, aligned(1)))
 {
@@ -359,6 +368,37 @@ typedef struct __attribute__((packed, aligned(1)))
 #define I2C1 ((I2C_Reg_t*)I2C1_BASE_ADDR)
 #define I2C2 ((I2C_Reg_t*)I2C2_BASE_ADDR)
 #define I2C3 ((I2C_Reg_t*)I2C3_BASE_ADDR)
+
+/**
+ * @brief Universal (synchronous) asynchronous receiver transmitter registers
+ * @param SR Status register
+ * @param DR Data register
+ * @param BRR Baud rate register
+ * @param CR1 Control register 1
+ * @param CR2 Control register 2
+ * @param CR3 Control register 3
+ * @param GTPR Guard time and prescaler register
+ */
+typedef struct __attribute__((packed, aligned(1)))
+{
+	_VO uint32_t SR;
+	_VO uint32_t DR;
+	_VO uint32_t BRR;
+	_VO uint32_t CR1;
+	_VO uint32_t CR2;
+	_VO uint32_t CR3;
+	_VO uint32_t GTPR;
+} USART_Reg_t;
+
+/*
+ * Universal (synchronous) asynchronous receiver transmitter registers handle definitions
+ * */
+#define USART1 ((USART_Reg_t*)USART1_BASE_ADDR)
+#define USART2 ((USART_Reg_t*)USART2_BASE_ADDR)
+#define USART3 ((USART_Reg_t*)USART3_BASE_ADDR)
+#define UART4  ((USART_Reg_t*)UART4_BASE_ADDR)
+#define UART5  ((USART_Reg_t*)UART5_BASE_ADDR)
+#define USART6 ((USART_Reg_t*)USART6_BASE_ADDR)
 
 /*** Clock enabling & disabling macros ***/
 
