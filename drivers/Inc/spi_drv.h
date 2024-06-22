@@ -81,12 +81,12 @@ typedef enum
 
 typedef enum
 {
-    _SPI_IRQ_EVENT_TX_CMPLT = 0x01,
-    _SPI_IRQ_EVENT_RX_CMPLT = 0x02,
-    _SPI_IRQ_EVENT_MODF_ERR = 0x04,
-    _SPI_IRQ_EVENT_OVR_ERR  = 0x08,
-    _SPI_IRQ_EVENT_CRC_ERR  = 0x10,
-    _SPI_IRQ_EVENT_FRE_ERR  = 0x20
+    _SPI_IRQ_EVENT_MODF_ERR = -4,
+    _SPI_IRQ_EVENT_OVR_ERR  = -3,
+    _SPI_IRQ_EVENT_CRC_ERR  = -2,
+    _SPI_IRQ_EVENT_FRE_ERR  = -1,
+    _SPI_IRQ_EVENT_TX_CMPLT =  1,
+    _SPI_IRQ_EVENT_RX_CMPLT =  2
 } SPI_IRQ_Event_t;
 
 typedef enum

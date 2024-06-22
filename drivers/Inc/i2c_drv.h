@@ -126,17 +126,17 @@ typedef enum
 
 typedef enum
 {
-    _I2C_IRQ_EVENT_TX_CMPLT = 0x01, // Master mode
-    _I2C_IRQ_EVENT_RX_CMPLT = 0x02, // Master mode
-    _I2C_IRQ_EVENT_DATA_REQ = 0x03, // Slave mode
-    _I2C_IRQ_EVENT_DATA_RCV = 0x04, // Slave mode
-    _I2C_IRQ_EVENT_STOP     = 0x05,
-    _I2C_IRQ_EVENT_BERR     = 0x06,
-    _I2C_IRQ_EVENT_ARLO     = 0x07,
-    _I2C_IRQ_EVENT_AF       = 0x08,
-    _I2C_IRQ_EVENT_OVR      = 0x09,
-    _I2C_IRQ_EVENT_PECERR   = 0x0A,
-    _I2C_IRQ_EVENT_TIMEOUT  = 0x0B
+    _I2C_IRQ_EVENT_STOP     = -7,
+    _I2C_IRQ_EVENT_BERR     = -6,
+    _I2C_IRQ_EVENT_ARLO     = -5,
+    _I2C_IRQ_EVENT_AF       = -4,
+    _I2C_IRQ_EVENT_OVR      = -3,
+    _I2C_IRQ_EVENT_PECERR   = -2,
+    _I2C_IRQ_EVENT_TIMEOUT  = -1,
+    _I2C_IRQ_EVENT_TX_CMPLT =  1, // Master mode
+    _I2C_IRQ_EVENT_RX_CMPLT =  2, // Master mode
+    _I2C_IRQ_EVENT_DATA_REQ =  3, // Slave mode
+    _I2C_IRQ_EVENT_DATA_RCV =  4  // Slave mode
 } I2C_IRQ_Event_t;
 
 typedef enum

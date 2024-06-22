@@ -474,6 +474,7 @@ bool spi_drv_DeInit(SPI_Handle_t *self)
 
 	spi_drv_PeripheralClockControl(self->spix, false);
 
+	self->spix = NULL;
 	memset(self, 0, sizeof(*self));
 
 	return true;
